@@ -1,11 +1,11 @@
 {
   "scrape_time": "2026-02-25 15:04:19",
-  "last_update": "2026-02-25 15:14:33",
+  "last_update": "2026-02-25 15:15:07",
   "total_events": 43,
-  "success_count": 37,
-  "success_rate": "86.0%",
+  "success_count": 36,
+  "success_rate": "83.7%",
   "extraction_method": "realtime_precision_field_extraction",
-  "current_progress": "6/12",
+  "current_progress": "7/12",
   "current_session_success": 106,
   "events": [
     {
@@ -72,13 +72,13 @@
       "index": 6
     },
     {
-      "index": 8,
-      "title": "齊豫",
-      "event_info": "是能在時間軸上被分解出來的 本色～ ; 演出時間: 5月9日(六) 19:30 PM ; 1/23 11:00AM 全面售票 ; 票價 : 4270/3770/3270/2770/2270/1670",
+      "title": "JS執行失敗",
+      "event_info": "演出時間: 5月9日(六) 19:30 PM ; 票價 : 4270/3770/3270/2770/2270/1670 ; 客服時間：週一 ~ 週五 10:00-12:30 | 13:30-18:00",
       "location": "地點:台北流行音樂中心",
-      "price": "票價 : 4270/3770/3270/2770/2270/1670",
-      "sale_time": "售票訊息 ; 拓元售票 ; 1/23 11:00AM 全面售票 ; 售票連結：https://tixcraft.com/activity/detail/26_chyiyu",
-      "url": "https://tixcraft.com/activity/detail/26_chyiyu"
+      "price": "2026/01/23（五）11:30之前刷卡失敗之訂單，將陸續轉為【ATM虛擬帳號付款】，請至【訂單查詢】中依照訂單顯示之資料，在指定時間內完成付款，逾期付款者此訂單取消不予保留。其餘刷卡失敗者，請重新購票。 ; 1/23 11:00AM 全面售票",
+      "sale_time": "2026/01/23（五）11:30之前刷卡失敗之訂單，將陸續轉為【ATM虛擬帳號付款】，請至【訂單查詢】中依照訂單顯示之資料，在指定時間內完成付款，逾期付款者此訂單取消不予保留。其餘刷卡失敗者，請重新購票。 ; 1/23 11:00AM 全面售票",
+      "url": "https://tixcraft.com/activity/detail/26_chyiyu",
+      "index": 7
     },
     {
       "index": 9,
