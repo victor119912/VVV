@@ -1,0 +1,30 @@
+2026-02-25 15:02:54,191 - INFO - ====== WebDriver manager ======
+2026-02-25 15:02:54,743 - INFO - Get LATEST chromedriver version for google-chrome
+2026-02-25 15:02:55,140 - INFO - Get LATEST chromedriver version for google-chrome
+2026-02-25 15:02:55,573 - INFO - Driver [C:\Users\mox20\.wdm\drivers\chromedriver\win64\145.0.7632.117\chromedriver-win32/chromedriver.exe] found in cache
+2026-02-25 15:02:56,630 - INFO - ✅ 隱身瀏覽器啟動成功 - UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb...
+2026-02-25 15:02:56,631 - INFO - 📋 處理活動 1/12: https://tixcraft.com/activity/detail/26_fujirock
+2026-02-25 15:02:56,639 - INFO - ⏭️ 跳過已存在的活動: Fuji Rock
+2026-02-25 15:02:56,640 - INFO - 📋 處理活動 2/12: https://tixcraft.com/activity/detail/26_mltr
+2026-02-25 15:02:56,640 - INFO - ⏭️ 跳過已存在的活動: Michael Learns to Rock
+2026-02-25 15:02:56,640 - INFO - 📋 處理活動 3/12: https://tixcraft.com/activity/detail/26_kamenashi
+2026-02-25 15:02:56,641 - INFO - ⏭️ 跳過已存在的活動: 龜梨和也
+2026-02-25 15:02:56,641 - INFO - 📋 處理活動 4/12: https://tixcraft.com/activity/detail/26_anson_c
+2026-02-25 15:02:56,641 - INFO - ⏭️ 跳過已存在的活動: Anson Seabra
+2026-02-25 15:02:56,641 - INFO - 📋 處理活動 5/12: https://tixcraft.com/activity/detail/26_anson
+2026-02-25 15:02:56,642 - INFO - ⏭️ 跳過已存在的活動: Anson Seabra
+2026-02-25 15:02:56,642 - INFO - 📋 處理活動 6/12: https://tixcraft.com/activity/detail/26_ztmy_a
+2026-02-25 15:02:56,642 - INFO - ⏭️ 跳過已存在的活動: ZUTOMAYO
+2026-02-25 15:02:56,642 - INFO - 📋 處理活動 7/12: https://tixcraft.com/activity/detail/26_chyiyu
+2026-02-25 15:02:56,643 - INFO - ⏭️ 跳過已存在的活動: 齊豫
+2026-02-25 15:02:56,643 - INFO - 📋 處理活動 8/12: https://tixcraft.com/activity/detail/26_cxm_d
+2026-02-25 15:02:56,644 - INFO - ⏭️ 跳過已存在的活動: CxM
+2026-02-25 15:02:56,644 - INFO - 📋 處理活動 9/12: https://tixcraft.com/activity/detail/26_cxm
+2026-02-25 15:02:56,645 - INFO - ⏭️ 跳過已存在的活動: CxM
+2026-02-25 15:02:56,645 - INFO - 📋 處理活動 10/12: https://tixcraft.com/activity/detail/26_amz
+2026-02-25 15:02:56,645 - INFO - ⏭️ 跳過已存在的活動: amazarashi
+2026-02-25 15:02:56,645 - INFO - 📋 處理活動 11/12: https://tixcraft.com/activity/detail/26_billyrrom
+2026-02-25 15:02:56,646 - INFO - ⏭️ 跳過已存在的活動: Billyrrom
+2026-02-25 15:02:56,646 - INFO - 📋 處理活動 12/12: https://tixcraft.com/activity/detail/26_della
+2026-02-25 15:02:56,646 - INFO - ⏭️ 跳過已存在的活動: 丁噹
+2026-02-25 15:02:56,646 - INFO - 🎉 爬取完成！總共 12 筆，成功 12 筆
