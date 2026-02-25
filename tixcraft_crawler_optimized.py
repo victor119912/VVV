@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tixcraft 全自動化深度爬取器（優化版）
+Tixcraft 智能爬蟲系統（優化版 v4.0）
 作者: Assistant
 日期: 2026-02-25
 功能: 
@@ -27,7 +27,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 
 
-class TixcraftScraper:
+class TixcraftScraperOptimized:
     """Tixcraft 演出資訊爬取器（智能版）"""
     
     def __init__(self, base_url="https://tixcraft.com/activity"):
@@ -260,34 +260,33 @@ class TixcraftScraper:
         options.add_argument("--disable-gpu")
         print("   ⚡ 效能選項配置完成")
         
-        # 初始化 WebDriver
-        print("   📦 正在下載/初始化 ChromeDriver...")
+        # 建立Chrome瀏覽器實例
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
-        print("   🌐 Chrome 瀏覽器啟動成功！")
         
-        # === CDP 指令隱藏 webdriver 屬性 ===
-        print("   🛡️  執行 CDP 防偵測指令...")
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        # === 進階JavaScript防偵測設定 ===
+        print("   🛡️  執行進階防偵測JavaScript...")
+        driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+            'source': '''
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                })
+            '''
         })
-        print("   ✅ 瀏覽器設定完成，已隱藏自動化特徵")
+        print("   ✅ JavaScript防偵測設定完成")
+        
+        # 設定預設視窗大小與位置
+        driver.set_window_size(1920, 1080)
+        print("   🖥️  瀏覽器視窗設定完成")
         
         return driver
-
     
     def scrape_activity_list(self):
-        """第一層：抓取所有活動網址"""
-        print("\n" + "="*60)
-        print("🎭 第一層：開始抓取活動列表網址")
-        print("="*60)
+        """第一層：抓取所有演出活動的網址清單"""
         
         try:
-            # 等待頁面載入完成
-            print("⏳ 等待頁面載入完成...")
-            WebDriverWait(self.driver, 15).until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
-            )
+            print(f"\n🌐 正在載入拓元售票活動列表頁面...")
+            self.driver.get(self.base_url)
             sleep(5)  # 等待 JavaScript 動態內容載入
             print("✅ 頁面載入完成")
             
@@ -332,7 +331,6 @@ class TixcraftScraper:
         except Exception as e:
             print(f"❌ 第一層爬取過程發生錯誤：{e}")
             return []
-    
     
     def scrape_single_event_details(self, url, index):
         """第二層：爬取單個演出的詳細資訊（智能版）"""
@@ -402,12 +400,13 @@ class TixcraftScraper:
                 # 使用智能分類功能
                 classified_info = self.classify_event_info(intro_text)
                 
-                # 更新資料結構
-                event_data.update(classified_info)
+                # 更新資料結構 (除了title以外)
+                for key in ['date', 'time', 'location', 'price', 'sale_time']:
+                    event_data[key] = classified_info[key]
                 
                 # 輸出分類結果到終端機
                 print(f"\n📊 【分類結果】")
-                print(f"" + "-" * 50)
+                print("-" * 50)
                 print(f"📅 演出日期: {event_data['date']}")
                 print(f"⏰ 演出時間: {event_data['time']}")
                 print(f"📍 演出地點: {event_data['location']}")
@@ -436,7 +435,7 @@ class TixcraftScraper:
             self.events_data.append(event_data)
             return False
     
-    def save_to_json(self, filename='tixcraft_activities.json'):
+    def save_to_json(self, filename='tixcraft_activities_optimized.json'):
         """將爬取的資料儲存為 JSON 檔案"""
         try:
             with open(filename, 'w', encoding='utf-8') as f:
@@ -451,11 +450,9 @@ class TixcraftScraper:
             print(f"\n❌ 儲存檔案失敗: {e}")
             return False
     
-
-    
     def run(self):
-        """執行全自動化深度爬取"""
-        print("\n🌟 開始執行 Tixcraft 全自動化深度爬取系統")
+        """執行智能化深度爬取"""
+        print("\n🌟 開始執行 Tixcraft 智能爬蟲系統")
         print("=" * 60)
         
         try:
@@ -511,7 +508,7 @@ class TixcraftScraper:
                 success = self.save_to_json()
                 if success:
                     print(f"📊 JSON 儲存結果：")
-                    print(f"   📁 檔案名稱：tixcraft_activities.json")
+                    print(f"   📁 檔案名稱：tixcraft_activities_optimized.json")
                     print(f"   📋 總演出數：{len(self.events_data)} 個")
                     
                     # 計算各欄位的有效資料數量
@@ -550,7 +547,7 @@ class TixcraftScraper:
 def main():
     """主程式進入點"""
     print("\n" + "=" * 70)
-    print("� Tixcraft 全自動化深度爬取器 v3.0")
+    print("🧠 Tixcraft 智能爬蟲系統 v4.0 (優化版)")
     print("=" * 70)
     
     # === 設定目標參數 ===
@@ -560,15 +557,18 @@ def main():
     print(f"📅 當前時間：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
     
-    print("\n🚀 即將啟動全自動化深度爬取系統...")
+    print("\n🚀 即將啟動智能化深度爬取系統...")
     print("💡 功能：自動抓取所有活動網址，逐一點入爬取詳細資訊")
-    print("🛡️ 特色：使用 div.thumbnails a + ID 選擇器，防偵測設定，連續錯誤處理")
+    print("🧠 智能：使用正則表達式進行關鍵字過濾與資料分類")
+    print("🔄 備用：intro無效時自動嘗試p標籤等其他HTML元素")
+    print("🧹 清洗：去除多餘空格、換行符號，優化資料品質")
+    print("🛡️ 特色：防偵測設定 + 連續錯誤處理 + 智能容錯")
     print("💾 儲存：終端機即時顯示 + JSON檔案永久保存")
     print("-" * 50)
     
     try:
         # === 初始化並執行爬取器 ===
-        scraper = TixcraftScraper(TARGET_URL)
+        scraper = TixcraftScraperOptimized(TARGET_URL)
         scraper.run()
     except Exception as e:
         print(f"\n❌ 主程式執行錯誤：{e}")
