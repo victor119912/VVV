@@ -53,24 +53,39 @@ class TixcraftUltimateCrawler:
         }
     
     def _save_single_event(self, event_data):
-        """即時保存單個活動資料"""
+        """即時保存單個活動資料（支援更新現有活動）"""
         try:
-            # 檢查是否已存在相同URL的資料
-            existing_urls = [event['url'] for event in self.current_data['events']]
-            if event_data['url'] not in existing_urls:
-                self.current_data['events'].append(event_data)
-                self.current_data['total_events'] = len(self.current_data['events'])
-                self.current_data['last_update'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            # 尋找是否有相同URL的現有資料
+            existing_index = None
+            for i, event in enumerate(self.current_data['events']):
+                if event['url'] == event_data['url']:
+                    existing_index = i
+                    break
+            
+            if existing_index is not None:
+                # 更新現有活動資料（應用最新優化功能）
+                old_event = self.current_data['events'][existing_index]
+                print(f"🔄 發現相同活動，更新資料以應用最新優化功能")
+                print(f"   舊標題: {old_event.get('title', '')[:50]}...")
+                print(f"   新標題: {event_data.get('title', '')[:50]}...")
                 
-                # 立刻寫入檔案
-                with open(self.json_filename, 'w', encoding='utf-8') as f:
-                    json.dump(self.current_data, f, ensure_ascii=False, indent=2)
-                
-                print(f"💾 即時保存：第 {event_data['index']} 個活動已存入 {self.json_filename}")
-                return True
+                self.current_data['events'][existing_index] = event_data
+                action_type = "更新現有"
             else:
-                print(f"⚠️ 第 {event_data['index']} 個活動已存在於資料庫中，跳過重複保存")
-                return False
+                # 添加新活動資料
+                self.current_data['events'].append(event_data)
+                action_type = "新增"
+            
+            self.current_data['total_events'] = len(self.current_data['events'])
+            self.current_data['last_update'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # 立刻寫入檔案
+            with open(self.json_filename, 'w', encoding='utf-8') as f:
+                json.dump(self.current_data, f, ensure_ascii=False, indent=2)
+            
+            print(f"💾 即時保存：第 {event_data['index']} 個活動已{action_type}至 {self.json_filename}")
+            return True
+            
         except Exception as e:
             print(f"❌ 即時保存失敗：{e}")
             return False
@@ -317,7 +332,8 @@ class TixcraftUltimateCrawler:
             # 方法2: 抓取div容器內容
             div_selectors = [
                 "div.content", "div.detail", "div.info", 
-                ".event-info", ".activity-detail", "div.description"
+                ".event-info", ".activity-detail", "div.description",
+                "div.ext-content", "ul.items"  # 新增深度掃描選擇器
             ]
             
             for selector in div_selectors:
@@ -331,7 +347,7 @@ class TixcraftUltimateCrawler:
                 except:
                     continue
             
-            # 方法3: 抓取表格內容
+            # 方法3: 深度掃描表格內容
             table_elements = self.driver.find_elements(By.TAG_NAME, "table")
             table_content = ""
             
@@ -350,6 +366,129 @@ class TixcraftUltimateCrawler:
         except Exception as e:
             print(f"❌ 備用抓取方法失敗: {e}")
             return None
+    
+    def deep_scan_for_missing_data(self):
+        """深度掃描：專門針對缺失的location和price進行補完"""
+        try:
+            print("🔍 啟動深度掃描模式...")
+            deep_content = {}
+            
+            # 掃描所有表格
+            tables = self.driver.find_elements(By.TAG_NAME, "table")
+            table_text = ""
+            for table in tables:
+                text = table.text.strip()
+                if text:
+                    table_text += text + "\n"
+            
+            # 掃描特定容器
+            container_selectors = [
+                "div.ext-content", "ul.items", "div.description",
+                "div.event-detail", "div.ticket-info", "div.venue-info"
+            ]
+            
+            container_text = ""
+            for selector in container_selectors:
+                try:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    for element in elements:
+                        text = element.text.strip()
+                        if text:
+                            container_text += text + "\n"
+                except:
+                    continue
+            
+            # 合併所有深度掃描內容
+            all_deep_content = table_text + container_text
+            
+            if all_deep_content:
+                print(f"✅ 深度掃描獲取到 {len(all_deep_content)} 字符的額外內容")
+                return all_deep_content
+            else:
+                print("⚠️ 深度掃描未發現額外內容")
+                return None
+                
+        except Exception as e:
+            print(f"❌ 深度掃描失敗: {e}")
+            return None
+    
+    def force_extract_keywords(self, page_content):
+        """強制關鍵字提取：搜尋特定格式的日期和場館資訊"""
+        result = {
+            'forced_datetime': [],
+            'forced_location': []
+        }
+        
+        if not page_content:
+            return result
+        
+        lines = page_content.split('\n')
+        
+        print("🎯 啟動強制關鍵字提取...")
+        
+        # 強制提取日期 (YYYY/MM/DD格式)
+        date_pattern = r'\d{4}/\d{1,2}/\d{1,2}'
+        for line in lines:
+            if re.search(date_pattern, line):
+                clean_line = self.clean_text(line)
+                if len(clean_line) < 100:  # 避免過長的行
+                    result['forced_datetime'].append(clean_line)
+        
+        # 強制提取場館關鍵字
+        venue_keywords = [
+            '體育館', '小巨蛋', '大巨蛋', '巨蛋', '中心', 'Legacy', 'Zepp', 
+            '展覽中心', '文化中心', '體育場', 'Arena', 'Center', '音樂廳', 
+            '演藝廳', '國際會議', 'TICC', '流行音樂', '海音館'
+        ]
+        
+        for line in lines:
+            line_clean = self.clean_text(line)
+            if any(keyword in line_clean for keyword in venue_keywords):
+                if len(line_clean) < 80:  # 過濾過長的文宣
+                    result['forced_location'].append(line_clean)
+        
+        print(f"   🗓️ 強制提取日期: {len(result['forced_datetime'])} 條")
+        print(f"   📍 強制提取場館: {len(result['forced_location'])} 條")
+        
+        return result
+    
+    def clean_redundant_info(self, text):
+        """清理冗餘資訊：移除注意事項等非核心內容"""
+        if not text or text == '請參閱官網詳細說明':
+            return text
+        
+        # 需要過濾的關鍵字（針對長句子）
+        noise_keywords = [
+            '以免損害自身權益', '禁止攜帶', '身分驗證', '工作人員指示', '退票',
+            '請務必於演出日前', '主辦單位保留', '相關規定請', '演唱會現場將進行',
+            '為安全考量', '會場內全面禁止', '現場將不接受', '購買前請注意',
+            'Live Nation', 'Instagram', 'facebook', '官方網站'
+        ]
+        
+        lines = text.split(';')
+        filtered_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if len(line) <= 40:  # 短句直接保留
+                filtered_lines.append(line)
+            else:
+                # 長句檢查是否包含冗餘關鍵字
+                has_noise = any(keyword in line for keyword in noise_keywords)
+                if not has_noise:
+                    filtered_lines.append(line)
+                else:
+                    print(f"   📝 過濾冗餘資訊: {line[:30]}...")
+        
+        return '; '.join(filtered_lines) if filtered_lines else '請參閱官網詳細說明'
+    
+    def beautify_format(self, data):
+        """格式美化：統一替換分號為換行符，提升可讀性"""
+        for key in ['event_datetime', 'sale_info', 'location', 'price']:
+            if key in data and data[key] != '請參閱官網詳細說明':
+                # 將分號替換為換行符，提高可讀性
+                data[key] = data[key].replace('; ', '\n').replace(';', '\n')
+        return data
     
     def _setup_driver(self):
         """配置並初始化Chrome瀏覽器（防偵測版）"""
@@ -565,8 +704,61 @@ class TixcraftUltimateCrawler:
                     'price': classified_info['price']
                 })
                 
+                # === 深度掃描補完缺失資料 ===
+                missing_fields = []
+                if event_data['location'] == '請參閱官網詳細說明':
+                    missing_fields.append('location')
+                if event_data['price'] == '請參閱官網詳細說明':
+                    missing_fields.append('price')
+                if event_data['event_datetime'] == '請參閱官網詳細說明':
+                    missing_fields.append('event_datetime')
+                
+                if missing_fields:
+                    print(f"\n🔍 【深度補完】發現缺失欄位: {missing_fields}")
+                    
+                    # 深度掃描
+                    deep_content = self.deep_scan_for_missing_data()
+                    if deep_content:
+                        # 對深度內容進行分類
+                        deep_classified = self.classify_content_precisely(deep_content)
+                        
+                        # 強制關鍵字提取 
+                        all_page_content = intro_text + "\n" + deep_content
+                        forced_data = self.force_extract_keywords(all_page_content)
+                        
+                        # 補完缺失欄位
+                        if 'location' in missing_fields and deep_classified['location'] != '請參閱官網詳細說明':
+                            event_data['location'] = deep_classified['location']
+                            print(f"   ✅ 深度掃描補完地點資訊")
+                        elif 'location' in missing_fields and forced_data['forced_location']:
+                            event_data['location'] = '; '.join(forced_data['forced_location'][:3])
+                            print(f"   ✅ 強制關鍵字補完地點資訊")
+                        
+                        if 'price' in missing_fields and deep_classified['price'] != '請參閱官網詳細說明':
+                            event_data['price'] = deep_classified['price']
+                            print(f"   ✅ 深度掃描補完票價資訊")
+                        
+                        if 'event_datetime' in missing_fields and forced_data['forced_datetime']:
+                            existing = event_data['event_datetime']
+                            if existing == '請參閱官網詳細說明':
+                                event_data['event_datetime'] = '; '.join(forced_data['forced_datetime'][:5])
+                            else:
+                                event_data['event_datetime'] += '; ' + '; '.join(forced_data['forced_datetime'][:3])
+                            print(f"   ✅ 強制關鍵字補完時間資訊")
+                
+                # === 清理冗餘資訊 ===
+                print(f"\n🧹 【資料清理】正在清除冗餘資訊...")
+                event_data['event_datetime'] = self.clean_redundant_info(event_data['event_datetime'])
+                event_data['sale_info'] = self.clean_redundant_info(event_data['sale_info'])
+                event_data['location'] = self.clean_redundant_info(event_data['location'])
+                event_data['price'] = self.clean_redundant_info(event_data['price'])
+                
+                # === 格式美化 ===
+                print(f"💄 【格式美化】統一格式並提升可讀性...")
+                event_data = self.beautify_format(event_data)
+                
                 # 輸出分類結果
-                print(f"\n📊 【分類結果】")
+                print(f"\n📊 【最終結果】")
                 print("-" * 60)
                 print(f"🗓️ 活動時間: {event_data['event_datetime'][:100]}...")
                 print(f"🎟️ 售票資訊: {event_data['sale_info'][:100]}...")
@@ -629,12 +821,8 @@ class TixcraftUltimateCrawler:
             
             for idx, url in enumerate(activity_urls, 1):
                 try:
-                    # 檢查是否已經爬取過
-                    existing_urls = [event['url'] for event in self.current_data['events']]
-                    if url in existing_urls:
-                        print(f"⏭️  第 {idx} 個活動已存在，跳過: {url}")
-                        skip_count += 1
-                        continue
+                    # 強制重新爬取所有活動（應用最新優化功能）
+                    print(f"🔄 第 {idx} 個活動：重新處理以應用最新優化功能")
                     
                     # 爬取單個活動資訊
                     success = self.scrape_single_event_ultimate(url, idx)
