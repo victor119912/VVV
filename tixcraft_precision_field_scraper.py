@@ -173,20 +173,87 @@ class TixcraftPrecisionFieldScraper:
             raise
             
     def clean_text(self, text):
-        """清洗器：移除特殊符號和雜質"""
+        """【深度清洗版】清洗器：移除特殊符號、裝飾符號和雜質"""
         if not text:
             return ""
             
-        # 移除指定的特殊符號
-        symbols_to_remove = [';', '&nbsp;', '●', '👉', '※', '★', '▲', '■', '◆', '🎫', '📍', '💎', '❋']
+        # 移除裝飾符號和表情符號（擴展版）
+        symbols_to_remove = [
+            ';', '&nbsp;', '●', '👉', '※', '★', '▲', '■', '◆', '🎫', '📍', '💎', '❫',
+            '☆', '⭐', '🎭', '⏰', '📅', '🎵', '🎶', '🎤', '🎸', '🎹', '🥁', '🎺', '🎷',
+            '✦', '✨', '💫', '🌟', '⚡', '🔥', '💥', '✅', '❤️', '💖', '💝', '🎉', '🎊',
+            '🏆', '👑', '🎁', '🎈', '🏅', '🏴', '🏳️', '📢', '📣', '📯', '🔔', '🔕',
+            '》', '《', '〉', '〈', '【', '】', '〔', '〕', '［', '］', '｛', '｝'
+        ]
         
         for symbol in symbols_to_remove:
             text = text.replace(symbol, '')
+        
+        # 移除表情符號（Unicode範圍）
+        text = re.sub(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002600-\U000026FF\U00002700-\U000027BF]', '', text)
         
         # 移除多餘空白並清理
         text = re.sub(r'\s+', ' ', text).strip()
         
         return text
+    
+    def calculate_similarity(self, text1, text2):
+        """計算兩個文字的相似度（簡單版本）"""
+        if not text1 or not text2:
+            return 0.0
+        
+        # 移除空格並轉小寫比較
+        clean1 = re.sub(r'\s+', '', text1.lower())
+        clean2 = re.sub(r'\s+', '', text2.lower())
+        
+        # 計算最長公共子序列的比例
+        max_len = max(len(clean1), len(clean2))
+        if max_len == 0:
+            return 1.0
+            
+        common_chars = len(set(clean1) & set(clean2))
+        return common_chars / max_len
+    
+    def remove_duplicate_lines(self, lines):
+        """移除相似度超過80%的重複行"""
+        if not lines:
+            return lines
+            
+        unique_lines = []
+        for current_line in lines:
+            is_duplicate = False
+            for existing_line in unique_lines:
+                if self.calculate_similarity(current_line, existing_line) > 0.8:
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
+                unique_lines.append(current_line)
+                
+        return unique_lines
+    
+    def filter_empty_shells(self, lines):
+        """移除空殼標題（只有標題沒有實質內容）"""
+        filtered_lines = []
+        empty_shell_patterns = [
+            r'^售票資訊：?\s*$',
+            r'^地點：?\s*$', 
+            r'^票價：?\s*$',
+            r'^時間：?\s*$',
+            r'^日期：?\s*$',
+            r'^PRICE：?\s*$',
+            r'^VENUE：?\s*$',
+            r'^TIME：?\s*$',
+            r'^售票方式：?\s*$',
+            r'^購票資訊：?\s*$'
+        ]
+        
+        for line in lines:
+            is_empty_shell = any(re.match(pattern, line.strip()) for pattern in empty_shell_patterns)
+            if not is_empty_shell and len(line.strip()) > 3:  # 至少要有3個字符
+                filtered_lines.append(line)
+                
+        return filtered_lines
         
     def get_clean_data_from_js(self, driver):
         """
@@ -348,6 +415,10 @@ class TixcraftPrecisionFieldScraper:
             if clean_line and clean_line not in cleaned_lines:
                 cleaned_lines.append(clean_line)
         
+        # 【結構唯一化】過濾空殼和重複檢查
+        cleaned_lines = self.filter_empty_shells(cleaned_lines)
+        cleaned_lines = self.remove_duplicate_lines(cleaned_lines)
+        
         # 合併所有相關資訊，用分號分隔
         if cleaned_lines:
             return ' ; '.join(cleaned_lines[:8])  # 最多保留前8行，避免過度冗長
@@ -355,7 +426,7 @@ class TixcraftPrecisionFieldScraper:
         return "未找到"
         
     def extract_precise_price(self, lines):
-        """【暴力版】活動票價提取 - 寧可抓錯絕不漏掉"""
+        """【暴力版+唯一化】活動票價提取 - 寧可抓錯絕不漏掉"""
         price_lines = []
         
         # 第一優先權：包含貨幣符號的行
@@ -386,6 +457,10 @@ class TixcraftPrecisionFieldScraper:
                     clean_line = self.clean_text(line)
                     if clean_line and clean_line not in price_lines:
                         price_lines.append(clean_line)
+        
+        # 【結構唯一化】過濾空殼和重複檢查
+        price_lines = self.filter_empty_shells(price_lines)
+        price_lines = self.remove_duplicate_lines(price_lines)
         
         # 合併所有找到的價格資訊
         if price_lines:
@@ -459,18 +534,43 @@ class TixcraftPrecisionFieldScraper:
             if any(venue in promoter for venue in ['台北', '高雄', '台中', '新北', '新竹', '台南']):
                 location_lines.append(self.clean_text(f"主辦方線索：{promoter}"))
         
-        # 合併結果
+        # 合併結果 - 【結構唯一化】
         if location_lines:
+            # 過濾空殼和去重複
+            location_lines = self.filter_empty_shells(location_lines)
+            location_lines = self.remove_duplicate_lines(location_lines)
             return ' ; '.join(location_lines[:2])  # 最多顯示前2個地點資訊
         
         return "未找到"
     
     def simplify_location(self, location_text):
-        """精簡地點資訊 - 自動截斷冗長退票規範"""
+        """【精準地點版】地點資訊精煉 - 提取核心場館資訊"""
         if not location_text or location_text == "未找到":
             return location_text
         
-        # 如果字數超過 50 字，檢查是否包含退票規範並自動截斷
+        # 精準地點提取：如果字數超過20字且包含形容詞，僅提取場館部分
+        if len(location_text) > 20:
+            # 宣傳形容詞關鍵字
+            promotional_keywords = ['睽違', '震撼', '口碑', '滿載', '熱力', '精彩', '絕佳', '完美', '經典', '傳奇', '夢幻', '頂級', '豪華']
+            
+            # 如果包含宣傳詞，嘗試提取核心場館資訊
+            if any(keyword in location_text for keyword in promotional_keywords):
+                # 使用 Regex 提取包含場館關鍵字的部分
+                venue_patterns = [
+                    r'[^，。；！？]*(?:館|巨蛋|中心|展覽館|Arena|Hall|Stadium|Dome|TICC|ATT|Legacy|Zepp)[^，。；！？]*',
+                    r'[^，。；！？]*(?:台北|高雄|台中|新北|新竹|台南)[^，。；！？]*(?:館|巨蛋|中心|展覽館|Arena|Hall)[^，。；！？]*',
+                    r'[^，。；！？]*(?:小巨蛋|大巨蛋|體育場|音樂中心|展覽中心|會議中心)[^，。；！？]*'
+                ]
+                
+                for pattern in venue_patterns:
+                    match = re.search(pattern, location_text)
+                    if match:
+                        extracted = match.group().strip()
+                        if extracted and len(extracted) > 3:
+                            self.logger.debug(f"地點精煉：{location_text[:30]}... → {extracted}")
+                            return extracted
+        
+        # 標準截斷處理
         if len(location_text) > 50:
             # 退票規範關鍵字
             refund_keywords = ['退票', '退換', '手續費', '規定', '政策', '條款', '說明', '注意事項', '提醒', '須知']
@@ -493,7 +593,7 @@ class TixcraftPrecisionFieldScraper:
         return location_text
         
     def extract_precise_sale_time(self, lines, js_data=None):
-        """【多行累積版】售票時間提取 - 強力黏著邏輯"""
+        """【多行累積版+唯一化】售票時間提取 - 強力黏著邏輯"""
         sale_time_lines = []
         
         # JS 備援加強：檢查 dataLayer 的售票相關欄位
@@ -545,6 +645,10 @@ class TixcraftPrecisionFieldScraper:
                         clean_line = self.clean_text(line)
                         if clean_line and clean_line not in sale_time_lines:
                             sale_time_lines.append(clean_line)
+        
+        # 【結構唯一化】過濾空殼和重複檢查
+        sale_time_lines = self.filter_empty_shells(sale_time_lines)
+        sale_time_lines = self.remove_duplicate_lines(sale_time_lines)
         
         # 去重複清洗：移除重複的前綴詞
         cleaned_lines = []
