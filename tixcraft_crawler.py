@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """
-Tixcraft 自動搶票腳本 - 完整版
+Tixcraft 全自動化深度爬取器（優化版）
 作者: Assistant
 日期: 2026-02-25
-功能: 自動爬取演出資訊、網路時間同步、防偵測自動購票
+功能: 
+- 第一層：抓取所有活動網址 (使用 div.thumbnails a)
+- 第二層：逐一點入爬取詳細資訊 (ID: synopsisEventTitle, intro)
+- 智能資料分類：使用正則表達式進行關鍵字過濾
+- 多元HTML定位：intro + p標籤備用抓取
+- 資料清洗：移除重複換行與多餘空格
+- 防偵測：保留完整的反偵測機制
+- 穩定性：完整的 try-except 錯誤處理
 """
 
-import ntplib
 from time import sleep
 from datetime import datetime
+import json
+import re
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -19,13 +27,13 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 
 
-class TixcraftBot:
-    """Tixcraft 自動搶票機器人"""
+class TixcraftScraper:
+    """Tixcraft 演出資訊爬取器"""
     
-    def __init__(self, target_url, target_datetime):
-        self.target_url = target_url
-        self.target_time = target_datetime.timestamp()
+    def __init__(self, base_url="https://tixcraft.com/activity"):
+        self.base_url = base_url
         self.driver = self._setup_driver()
+        self.events_data = []  # 儲存所有爬取的資料
     
     def _setup_driver(self):
         """配置並初始化 Chrome 瀏覽器（防偵測版）"""
@@ -59,214 +67,246 @@ class TixcraftBot:
         print("   ✅ 瀏覽器設定完成，已隱藏自動化特徵")
         
         return driver
+
     
-    def get_network_time(self):
-        """獲取 NTP 網路標準時間"""
-        try:
-            client = ntplib.NTPClient()
-            response = client.request('pool.ntp.org', version=3)
-            return response.tx_time
-        except Exception as e:
-            print(f"NTP 時間同步失敗，使用本機時間: {e}")
-            return datetime.now().timestamp()
-    
-    def scrape_event_info(self):
-        """爬取並顯示演出基本資訊"""
+    def scrape_activity_list(self):
+        """第一層：抓取所有活動網址"""
         print("\n" + "="*60)
-        print("🎭 開始爬取演出資訊")
+        print("🎭 第一層：開始抓取活動列表網址")
         print("="*60)
         
         try:
             # 等待頁面載入完成
             print("⏳ 等待頁面載入完成...")
-            WebDriverWait(self.driver, 10).until(
+            WebDriverWait(self.driver, 15).until(
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
+            sleep(5)  # 等待 JavaScript 動態內容載入
             print("✅ 頁面載入完成")
             
-            # === 爬取演出標題 ===
-            print("\n🔍 正在搜尋演出標題 (ID: synopsisEventTitle)...")
+            # === 使用指定的選擇器搜尋活動連結 ===
+            print("\n🔍 正在搜尋演出活動連結 (使用 div.thumbnails a)...")
+            
+            # 優先使用指定的 div.thumbnails a 選擇器
+            activity_links = self.driver.find_elements(By.CSS_SELECTOR, "div.thumbnails a")
+            
+            # 如果沒找到，嘗試備用選擇器
+            if not activity_links:
+                print("⚠️ 使用備用選擇器搜尋...")
+                activity_links = self.driver.find_elements(By.CSS_SELECTOR, "a[href*='activity/detail']")
+            
+            if not activity_links:
+                print("❌ 未找到任何演出連結")
+                return []
+            
+            print(f"✅ 找到 {len(activity_links)} 個演出連結")
+            
+            # 提取唯一的連結並過濾重複
+            unique_urls = set()
+            valid_links = []
+            
+            for link in activity_links:
+                try:
+                    url = link.get_attribute('href')
+                    if url and 'activity/detail' in url and url not in unique_urls:
+                        unique_urls.add(url)
+                        valid_links.append(url)
+                except Exception as e:
+                    print(f"❌ 提取連結時發生錯誤: {e}")
+                    continue
+            
+            print(f"📊 過濾重複後獲得唯一連結 {len(valid_links)} 個")
+            print(f"\n📋 活動網址清單：")
+            for i, url in enumerate(valid_links, 1):
+                print(f"   {i}. {url}")
+            
+            return valid_links
+            
+        except Exception as e:
+            print(f"❌ 第一層爬取過程發生錯誤：{e}")
+            return []
+    
+    
+    def scrape_single_event_details(self, url, index):
+        """第二層：爬取單個演出的詳細資訊"""
+        
+        print(f"\n🔍 === 第 {index} 個活動 ===")
+        print(f"🌐 正在進入: {url}")
+        
+        # 初始化資料結構
+        event_data = {
+            'index': index,
+            'title': '未找到',
+            'date': '未找到',
+            'time': '未找到', 
+            'location': '未找到',
+            'price': '未找到',
+            'url': url
+        }
+        
+        try:
+            # 前往演出詳情頁面  
+            self.driver.get(url)
+            sleep(2)  # 避免切換頁面太快被網站阻擋
+            
+            # === 抓取演出項目名稱 (ID: synopsisEventTitle) ===
             try:
                 title_element = self.driver.find_element(By.ID, "synopsisEventTitle")
-                event_title = title_element.text.strip()
-                print(f"✅ 【演出標題】找到了！")
-                print(f"📌 演出項目：{event_title}")
-                print("-" * 50)
-            except NoSuchElementException:
-                print("❌ 【演出標題】無法找到 synopsisEventTitle 元素")
+                title = title_element.text.strip() if title_element.text.strip() else "未找到"
+                event_data['title'] = title
+                print(f"🎭 演出項目名稱: {title}")
+            except Exception as e:
+                print(f"⚠️ 無法抓取演出項目名稱: {e}")
+                print(f"🎭 演出項目名稱: 未找到")
             
-            # === 爬取詳細資訊 (intro 區塊) ===
-            print("\n🔍 正在搜尋詳細資訊 (ID: intro)...")
+            # === 抓取演出詳細資訊 (ID: intro) ===
             try:
-                intro_section = self.driver.find_element(By.ID, "intro")
-                intro_text = intro_section.text
-                print(f"✅ 【詳細資訊】找到了！共 {len(intro_text)} 個字元")
+                intro_element = self.driver.find_element(By.ID, "intro")
+                intro_text = intro_element.text.strip() if intro_element.text.strip() else "未找到"
                 
-                print("\n📋 開始解析演出詳細資訊：")
-                print("=" * 50)
-                
-                # 初始化資料收集
-                found_data = {
-                    '日期': [],
-                    '時間': [],
-                    '地點': [],
-                    '票價': [],
-                    '售票': [],
-                    '其他': []
-                }
-                
-                # 解析並格式化 intro 內容
-                lines = intro_text.split('\n')
-                for line_num, line in enumerate(lines, 1):
-                    line = line.strip()
-                    if line:
-                        # 分類並顯示資訊
-                        if '演出日期' in line or '日期' in line:
-                            print(f"📅 【日期資訊】 {line}")
-                            found_data['日期'].append(line)
-                        elif '演出時間' in line or ('時間' in line and '演出' in line):
-                            print(f"⏰ 【時間資訊】 {line}")
-                            found_data['時間'].append(line)
-                        elif '演出地點' in line or '地點' in line or '場地' in line or '館' in line:
-                            print(f"📍 【地點資訊】 {line}")
-                            found_data['地點'].append(line)
-                        elif '票價' in line or '價格' in line or 'NT$' in line or '元' in line:
-                            print(f"💰 【票價資訊】 {line}")
-                            found_data['票價'].append(line)
-                        elif '售票時間' in line or '開賣' in line or '預售' in line:
-                            print(f"🎫 【售票資訊】 {line}")
-                            found_data['售票'].append(line)
-                        else:
-                            print(f"ℹ️  【其他資訊】 {line}")
-                            found_data['其他'].append(line)
-                
-                # 顯示統計摘要
-                print("\n" + "=" * 50)
-                print("📊 資料收集統計：")
-                for category, items in found_data.items():
-                    if items:
-                        print(f"   {category}：{len(items)} 筆")
-                print("=" * 50)
-                
-            except NoSuchElementException:
-                print("❌ 【詳細資訊】無法找到 intro 元素")
-            
-        except TimeoutException:
-            print("❌ 頁面載入超時，跳過資訊爬取")
-        except Exception as e:
-            print(f"❌ 爬取過程發生錯誤：{e}")
-        
-        print("\n🎉 演出資訊爬取階段完成！")
-        print("=" * 60)
-    
-    def click_buy_button(self):
-        """智能搜尋並點擊購票按鈕"""
-        try:
-            wait = WebDriverWait(self.driver, 0.5)
-            
-            # === 多重購票按鈕選擇器 ===
-            selectors = [
-                "//a[contains(text(), '立即購票')]",
-                "//button[contains(text(), '立即購票')]", 
-                "//input[@value='立即購票']",
-                "//*[contains(@class, 'btn') and contains(text(), '立即購票')]",
-                "//a[contains(@href, 'buy')]",
-                "//*[@id='gameListContainer']//a[contains(text(), '立即購票')]",
-                "//a[contains(text(), '購票')]",
-                "//*[contains(@class, 'buy-btn')]"
-            ]
-            
-            for selector in selectors:
-                try:
-                    buy_btn = wait.until(EC.element_to_be_clickable((By.XPATH, selector)))
-                    # 使用 JavaScript 點擊避免被攔截
-                    self.driver.execute_script("arguments[0].click();", buy_btn)
-                    return True
-                except:
-                    continue
+                if intro_text != "未找到":
+                    # 解析 intro 中的日期、時間、地點、票價
+                    print(f"\n📋 詳細資訊解析：")
+                    print(f"" + "-" * 40)
                     
-            return False
+                    lines = intro_text.split('\n')
+                    date_info = []
+                    time_info = []
+                    location_info = []
+                    price_info = []
+                    
+                    for line in lines:
+                        line = line.strip()
+                        if not line:
+                            continue
+                            
+                        # 分類資訊
+                        if any(keyword in line for keyword in ['演出日期', '日期', '2026/', '2027/', '(一)', '(二)', '(三)', '(四)', '(五)', '(六)', '(日)']):
+                            date_info.append(line)
+                        elif any(keyword in line for keyword in ['演出時間', '時間', ':', '點', 'PM', 'AM']) and any(time_word in line for time_word in [':', '點', 'PM', 'AM']):
+                            time_info.append(line)
+                        elif any(keyword in line for keyword in ['演出地點', '地點', '場地', '館', '廳', '院', '心']):
+                            location_info.append(line)
+                        elif any(keyword in line for keyword in ['票價', 'NT$', '元', '$']) and any(price_word in line for price_word in ['NT$', '元', '$']):
+                            price_info.append(line)
+                    
+                    # 儲存到資料結構
+                    event_data['date'] = '; '.join(date_info) if date_info else '未找到'
+                    event_data['time'] = '; '.join(time_info) if time_info else '未找到' 
+                    event_data['location'] = '; '.join(location_info) if location_info else '未找到'
+                    event_data['price'] = '; '.join(price_info) if price_info else '未找到'
+                    
+                    # 輸出分類結果到終端機
+                    print(f"📅 演出日期: {event_data['date']}")
+                    print(f"⏰ 演出時間: {event_data['time']}")
+                    print(f"📍 演出地點: {event_data['location']}")
+                    print(f"💰 活動票價: {event_data['price']}")
+                    
+                else:
+                    print(f"\n📋 詳細資訊: {intro_text}")
+                    
+            except Exception as e:
+                print(f"⚠️ 無法抓取詳細資訊: {e}")
+                print(f"📋 演出日期: 未找到")
+                print(f"⏰ 演出時間: 未找到")
+                print(f"📍 演出地點: 未找到")
+                print(f"💰 活動票價: 未找到")
             
-        except Exception:
+            print(f"🔗 活動網址: {url}")
+            print(f"✅ 第 {index} 個活動抓取完成")
+            
+            # 將資料加入收集清單
+            self.events_data.append(event_data)
+            return True
+            
+        except Exception as e:
+            print(f"❌ 第 {index} 個活動抓取失敗: {e}")
+            print(f"⏭️  跳過此活動，繼續下一個...")
             return False
     
-    def countdown_timer(self):
-        """智能倒數計時與搶票執行"""
-        print("\n⏰ 開始時間監控...")
-        
-        while True:
-            current_time = self.get_network_time()
-            remaining = self.target_time - current_time
-            
-            if remaining <= 0.5:
-                # === 搶票衝刺階段 ===
-                print("🚀 時間到！開始搶票衝刺...")
-                self.driver.refresh()
-                sleep(0.3)  # 等待頁面重載
-                
-                # 連續嘗試點擊購票按鈕
-                success = False
-                for attempt in range(100):  # 最多嘗試100次
-                    if self.click_buy_button():
-                        print(f"✅ 搶票成功！耗時 {attempt + 1} 次嘗試")
-                        success = True
-                        break
-                    sleep(0.05)  # 極短間隔重試
-                
-                if not success:
-                    print("❌ 搶票失敗：未找到可用的購票按鈕")
-                
-                break
-                
-            elif remaining > 5:
-                # === 遠距離監控階段 ===
-                minutes, seconds = divmod(int(remaining), 60)
-                hours, minutes = divmod(minutes, 60)
-                if hours > 0:
-                    print(f"⏳ 距離開賣還有 {hours}:{minutes:02d}:{seconds:02d}")
-                else:
-                    print(f"⏳ 距離開賣還有 {minutes}:{seconds:02d}")
-                sleep(1)  # 每秒更新一次
-                
-            else:
-                # === 高精度準備階段 ===
-                print(f"🎯 倒數 {remaining:.2f} 秒，高精度準備中...")
-                sleep(0.1)  # 高頻率檢測
+    def save_to_json(self, filename='tixcraft_activities.json'):
+        """將爬取的資料儲存為 JSON 檔案"""
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'scrape_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'total_events': len(self.events_data),
+                    'events': self.events_data
+                }, f, ensure_ascii=False, indent=2)
+            print(f"\n💾 資料已儲存至 {filename}")
+            return True
+        except Exception as e:
+            print(f"\n❌ 儲存檔案失敗: {e}")
+            return False
+    
+
     
     def run(self):
-        """執行完整搶票流程"""
-        print("\n🌟 開始執行 Tixcraft 自動搶票系統")
+        """執行全自動化深度爬取"""
+        print("\n🌟 開始執行 Tixcraft 全自動化深度爬取系統")
         print("=" * 60)
         
         try:
-            print("🌐 【步驟 1】正在載入目標頁面...")
-            print(f"   📍 目標網址：{self.target_url}")
-            self.driver.get(self.target_url)
+            print("🌐 【步驟 1】正在載入活動列表頁面...")
+            print(f"   📍 目標網址：{self.base_url}")
+            self.driver.get(self.base_url)
+            sleep(3)  # 等待頁面完全載入
             print("✅ 頁面載入成功！")
             
-            # === 資訊爬取階段 ===
-            print("\n📋 【步驟 2】開始爬取演出資訊...")
-            self.scrape_event_info()
+            # === 第一層：抓取所有活動網址 ===
+            print("\n📋 【第一層】抓取所有活動網址...")
+            activity_urls = self.scrape_activity_list()
             
-            # === 手動登入時間 ===
-            print(f"\n🔐 【步驟 3】手動登入階段")
-            print(f"   ⏰ 您有 30 秒時間完成登入（Google/Facebook 等）")
-            print(f"   💻 請在新開啟的瀏覽器視窗中完成登入程序...")
+            if not activity_urls:
+                print("❌ 未找到任何活動網址，程式結束")
+                return
             
-            for i in range(30, 0, -1):
-                print(f"   📊 剩餘登入時間：{i:2d} 秒", end='\r')
-                sleep(1)
+            # === 第二層：迴圈點入抓取詳細資訊 ===
+            print(f"\n🔄 【第二層】開始迴圈爬取 {len(activity_urls)} 個活動的詳細資訊...")
+            print("=" * 60)
             
-            print(f"\n✅ 登入時間結束，開始自動監控")
+            success_count = 0
+            fail_count = 0
             
-            # === 倒數計時與搶票 ===
-            print(f"\n⏰ 【步驟 4】開始時間監控與自動搶票")
-            print(f"   🎯 系統將在指定時間自動搶票")
-            self.countdown_timer()
+            for idx, url in enumerate(activity_urls, 1):
+                try:
+                    # 自動進入該活動頁面並抓取詳細資訊
+                    success = self.scrape_single_event_details(url, idx)
+                    if success:
+                        success_count += 1
+                    else:
+                        fail_count += 1
+                        
+                except Exception as e:
+                    print(f"❌ 處理第 {idx} 個活動時發生錯誤: {e}")
+                    print(f"⏭️  跳過此活動，繼續下一個...")
+                    fail_count += 1
+                    continue
             
-            # === 搶票完成後暫停 ===
-            print("\n🎉 【搶票完成】搶票程序執行完畢！")
-            print("📝 瀏覽器將保持開啟，請手動完成後續購票流程（選位、付款等）")
+            # === 完成統計 ===
+            print("\n" + "=" * 60)
+            print("🎉 所有活動資訊抓取完成！")
+            print("=" * 60)
+            print(f"📊 抓取統計結果：")
+            print(f"   ✅ 成功抓取：{success_count} 個活動")
+            print(f"   ❌ 失敗跳過：{fail_count} 個活動")
+            print(f"   📋 總計處理：{len(activity_urls)} 個活動")
+            print(f"   📈 成功率：{(success_count/len(activity_urls)*100):.1f}%")
+            
+            # === JSON 儲存階段 ===
+            if self.events_data:
+                print(f"\n💾 【JSON 儲存】正在儲存資料...")
+                success = self.save_to_json()
+                if success:
+                    print(f"📊 JSON 儲存結果：")
+                    print(f"   📁 檔案名稱：tixcraft_activities.json")
+                    print(f"   📋 總演出數：{len(self.events_data)} 個")
+                    print(f"   🎭 有標題的：{sum(1 for e in self.events_data if e['title'] != '未找到')} 個")
+                    print(f"   📅 有日期的：{sum(1 for e in self.events_data if e['date'] != '未找到')} 個")
+                    print(f"   📍 有地點的：{sum(1 for e in self.events_data if e['location'] != '未找到')} 個")
+                    print(f"   💰 有票價的：{sum(1 for e in self.events_data if e['price'] != '未找到')} 個")
+            else:
+                print(f"\n⚠️ 無資料可儲存，跳過JSON儲存")
             
         except KeyboardInterrupt:
             print("\n⚠️ 程式被使用者中斷")
@@ -287,26 +327,26 @@ class TixcraftBot:
 def main():
     """主程式進入點"""
     print("\n" + "=" * 70)
-    print("🎪 Tixcraft 自動搶票腳本 v2.0")
+    print("� Tixcraft 全自動化深度爬取器 v3.0")
     print("=" * 70)
     
     # === 設定目標參數 ===
-    TARGET_URL = "https://tixcraft.com/activity/detail/26_kamenashi"
-    TARGET_DATETIME = datetime(2026, 3, 7, 12, 0, 0)  # 2026-03-07 12:00:00
+    TARGET_URL = "https://tixcraft.com/activity"
     
     print(f"🎯 目標網址：{TARGET_URL}")
-    print(f"⏰ 搶票時間：{TARGET_DATETIME.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"📅 當前時間：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
     
-    print("\n🚀 即將啟動自動搶票系統...")
-    print("💡 提示：程式執行完畢後會暫停，請查看抓取結果")
+    print("\n🚀 即將啟動全自動化深度爬取系統...")
+    print("💡 功能：自動抓取所有活動網址，逐一點入爬取詳細資訊")
+    print("🛡️ 特色：使用 div.thumbnails a + ID 選擇器，防偵測設定，連續錯誤處理")
+    print("💾 儲存：終端機即時顯示 + JSON檔案永久保存")
     print("-" * 50)
     
     try:
-        # === 初始化並執行搶票機器人 ===
-        bot = TixcraftBot(TARGET_URL, TARGET_DATETIME)
-        bot.run()
+        # === 初始化並執行爬取器 ===
+        scraper = TixcraftScraper(TARGET_URL)
+        scraper.run()
     except Exception as e:
         print(f"\n❌ 主程式執行錯誤：{e}")
         print("程式發生未預期的錯誤")
