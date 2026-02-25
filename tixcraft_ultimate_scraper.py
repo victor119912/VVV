@@ -406,13 +406,9 @@ class TixcraftUltimateScraper:
             return False
     
     def should_skip_url(self, existing_events, url):
-        """斷點續爬 - 檢查是否應該跳過此URL"""
-        for event in existing_events:
-            if event.get('url') == url:
-                # 如果標題不是"未找到"，則跳過
-                if event.get('title') not in ['未找到', '提取失敗', 'JS監控超時', 'JS執行失敗']:
-                    return True, event
-                break
+        """斷點續爬 - 檢查是否應該跳過此URL - 強制重新抓取模式"""
+        # 強制重新抓取模式：永遠不跳過
+        self.logger.info(f"🔄 強制重新抓取模式：將重新處理 {url}")
         return False, None
     
     def scrape_all_events(self, urls, filename='tixcraft_activities.json'):

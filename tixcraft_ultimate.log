@@ -28,3 +28,275 @@
 2026-02-25 15:02:56,646 - INFO - 📋 處理活動 12/12: https://tixcraft.com/activity/detail/26_della
 2026-02-25 15:02:56,646 - INFO - ⏭️ 跳過已存在的活動: 丁噹
 2026-02-25 15:02:56,646 - INFO - 🎉 爬取完成！總共 12 筆，成功 12 筆
+2026-02-25 15:06:27,688 - INFO - ====== WebDriver manager ======
+2026-02-25 15:06:28,203 - INFO - Get LATEST chromedriver version for google-chrome
+2026-02-25 15:06:28,621 - INFO - Get LATEST chromedriver version for google-chrome
+2026-02-25 15:06:28,977 - INFO - Driver [C:\Users\mox20\.wdm\drivers\chromedriver\win64\145.0.7632.117\chromedriver-win32/chromedriver.exe] found in cache
+2026-02-25 15:06:30,023 - INFO - ✅ 隱身瀏覽器啟動成功 - UA: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Ap...
+2026-02-25 15:06:30,023 - INFO - 📋 處理活動 1/12: https://tixcraft.com/activity/detail/26_fujirock
+2026-02-25 15:06:30,024 - INFO - ⏭️ 跳過已存在的活動: Fuji Rock
+2026-02-25 15:06:30,024 - INFO - 📋 處理活動 2/12: https://tixcraft.com/activity/detail/26_mltr
+2026-02-25 15:06:30,024 - INFO - ⏭️ 跳過已存在的活動: Michael Learns to Rock
+2026-02-25 15:06:30,024 - INFO - 📋 處理活動 3/12: https://tixcraft.com/activity/detail/26_kamenashi
+2026-02-25 15:06:30,025 - INFO - ⏭️ 跳過已存在的活動: 龜梨和也
+2026-02-25 15:06:30,025 - INFO - 📋 處理活動 4/12: https://tixcraft.com/activity/detail/26_anson_c
+2026-02-25 15:06:30,025 - INFO - ⏭️ 跳過已存在的活動: Anson Seabra
+2026-02-25 15:06:30,025 - INFO - 📋 處理活動 5/12: https://tixcraft.com/activity/detail/26_anson
+2026-02-25 15:06:30,026 - INFO - ⏭️ 跳過已存在的活動: Anson Seabra
+2026-02-25 15:06:30,026 - INFO - 📋 處理活動 6/12: https://tixcraft.com/activity/detail/26_ztmy_a
+2026-02-25 15:06:30,026 - INFO - ⏭️ 跳過已存在的活動: ZUTOMAYO
+2026-02-25 15:06:30,026 - INFO - 📋 處理活動 7/12: https://tixcraft.com/activity/detail/26_chyiyu
+2026-02-25 15:06:30,027 - INFO - ⏭️ 跳過已存在的活動: 齊豫
+2026-02-25 15:06:30,027 - INFO - 📋 處理活動 8/12: https://tixcraft.com/activity/detail/26_cxm_d
+2026-02-25 15:06:30,027 - INFO - ⏭️ 跳過已存在的活動: CxM
+2026-02-25 15:06:30,027 - INFO - 📋 處理活動 9/12: https://tixcraft.com/activity/detail/26_cxm
+2026-02-25 15:06:30,028 - INFO - ⏭️ 跳過已存在的活動: CxM
+2026-02-25 15:06:30,028 - INFO - 📋 處理活動 10/12: https://tixcraft.com/activity/detail/26_amz
+2026-02-25 15:06:30,028 - INFO - ⏭️ 跳過已存在的活動: amazarashi
+2026-02-25 15:06:30,029 - INFO - 📋 處理活動 11/12: https://tixcraft.com/activity/detail/26_billyrrom
+2026-02-25 15:06:30,029 - INFO - ⏭️ 跳過已存在的活動: Billyrrom
+2026-02-25 15:06:30,029 - INFO - 📋 處理活動 12/12: https://tixcraft.com/activity/detail/26_della
+2026-02-25 15:06:30,030 - INFO - ⏭️ 跳過已存在的活動: 丁噹
+2026-02-25 15:06:30,030 - INFO - 🎉 爬取完成！總共 12 筆，成功 12 筆
+2026-02-25 15:09:09,800 - INFO - ====== WebDriver manager ======
+2026-02-25 15:09:10,341 - INFO - Get LATEST chromedriver version for google-chrome
+2026-02-25 15:09:10,750 - INFO - Get LATEST chromedriver version for google-chrome
+2026-02-25 15:09:11,174 - INFO - Driver [C:\Users\mox20\.wdm\drivers\chromedriver\win64\145.0.7632.117\chromedriver-win32/chromedriver.exe] found in cache
+2026-02-25 15:09:12,215 - INFO - ✅ 隱身瀏覽器啟動成功 - UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0...
+2026-02-25 15:09:12,215 - INFO - 📋 處理活動 1/12: https://tixcraft.com/activity/detail/26_fujirock
+2026-02-25 15:09:12,216 - INFO - ⏭️ 跳過已存在的活動: Fuji Rock
+2026-02-25 15:09:12,216 - INFO - 📋 處理活動 2/12: https://tixcraft.com/activity/detail/26_mltr
+2026-02-25 15:09:12,217 - INFO - ⏭️ 跳過已存在的活動: Michael Learns to Rock
+2026-02-25 15:09:12,217 - INFO - 📋 處理活動 3/12: https://tixcraft.com/activity/detail/26_kamenashi
+2026-02-25 15:09:12,217 - INFO - ⏭️ 跳過已存在的活動: 龜梨和也
+2026-02-25 15:09:12,217 - INFO - 📋 處理活動 4/12: https://tixcraft.com/activity/detail/26_anson_c
+2026-02-25 15:09:12,218 - INFO - ⏭️ 跳過已存在的活動: Anson Seabra
+2026-02-25 15:09:12,218 - INFO - 📋 處理活動 5/12: https://tixcraft.com/activity/detail/26_anson
+2026-02-25 15:09:12,218 - INFO - ⏭️ 跳過已存在的活動: Anson Seabra
+2026-02-25 15:09:12,219 - INFO - 📋 處理活動 6/12: https://tixcraft.com/activity/detail/26_ztmy_a
+2026-02-25 15:09:12,219 - INFO - ⏭️ 跳過已存在的活動: ZUTOMAYO
+2026-02-25 15:09:12,219 - INFO - 📋 處理活動 7/12: https://tixcraft.com/activity/detail/26_chyiyu
+2026-02-25 15:09:12,220 - INFO - ⏭️ 跳過已存在的活動: 齊豫
+2026-02-25 15:09:12,220 - INFO - 📋 處理活動 8/12: https://tixcraft.com/activity/detail/26_cxm_d
+2026-02-25 15:09:12,220 - INFO - ⏭️ 跳過已存在的活動: CxM
+2026-02-25 15:09:12,220 - INFO - 📋 處理活動 9/12: https://tixcraft.com/activity/detail/26_cxm
+2026-02-25 15:09:12,221 - INFO - ⏭️ 跳過已存在的活動: CxM
+2026-02-25 15:09:12,221 - INFO - 📋 處理活動 10/12: https://tixcraft.com/activity/detail/26_amz
+2026-02-25 15:09:12,222 - INFO - ⏭️ 跳過已存在的活動: amazarashi
+2026-02-25 15:09:12,222 - INFO - 📋 處理活動 11/12: https://tixcraft.com/activity/detail/26_billyrrom
+2026-02-25 15:09:12,222 - INFO - ⏭️ 跳過已存在的活動: Billyrrom
+2026-02-25 15:09:12,222 - INFO - 📋 處理活動 12/12: https://tixcraft.com/activity/detail/26_della
+2026-02-25 15:09:12,223 - INFO - ⏭️ 跳過已存在的活動: 丁噹
+2026-02-25 15:09:12,223 - INFO - 🎉 爬取完成！總共 12 筆，成功 12 筆
+2026-02-25 15:10:50,412 - INFO - ====== WebDriver manager ======
+2026-02-25 15:10:51,015 - INFO - Get LATEST chromedriver version for google-chrome
+2026-02-25 15:10:51,506 - INFO - Get LATEST chromedriver version for google-chrome
+2026-02-25 15:10:51,942 - INFO - Driver [C:\Users\mox20\.wdm\drivers\chromedriver\win64\145.0.7632.117\chromedriver-win32/chromedriver.exe] found in cache
+2026-02-25 15:10:53,064 - INFO - ✅ 隱身瀏覽器啟動成功 - UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0...
+2026-02-25 15:10:53,064 - INFO - 📋 處理活動 1/12: https://tixcraft.com/activity/detail/26_fujirock
+2026-02-25 15:10:53,065 - INFO - 🔄 強制重新抓取模式：將重新處理 https://tixcraft.com/activity/detail/26_fujirock
+2026-02-25 15:10:55,798 - INFO - 🔍 開始 JS 監控 dataLayer，最多等待 5 秒...
+2026-02-25 15:11:29,645 - ERROR - ❌ JavaScript 執行失敗: Message: script timeout
+  (Session info: chrome=145.0.7632.110)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xd57dd3
+	0xd57e14
+	0xb61bee
+	0xbecb49
+	0xbcea3c
+	0xbeb621
+	0xbce7d6
+	0xba0049
+	0xba0e04
+	0xfb6924
+	0xfb1bf7
+	0xfcf5a0
+	0xd70f58
+	0xd7891d
+	0xd60648
+	0xd60812
+	0xd4a21a
+	0x768cfcc9
+	0x771982ae
+	0x7719827e
+
+2026-02-25 15:11:29,737 - INFO - 💾 已即時同步至 JSON，進度: 1/12 (8.3%)
+2026-02-25 15:11:29,737 - INFO -   標題: JS執行失敗
+2026-02-25 15:11:29,737 - INFO -   演出資訊: 活動日期：2026/07/24(五), 07/25(六), 07/26(日) ; ※在2026年7月...
+2026-02-25 15:11:29,737 - INFO -   地點: 活動地點：新潟縣苗場滑雪場（新潟湯澤町）...
+2026-02-25 15:11:29,737 - INFO -   票價: ※15歲及以下可在大人陪同下免費入場。 ; 5. 本活動僅限...
+2026-02-25 15:11:29,737 - INFO - ⏱️ 隨機延遲 6.4 秒...
+2026-02-25 15:11:36,181 - INFO - 📋 處理活動 2/12: https://tixcraft.com/activity/detail/26_mltr
+2026-02-25 15:11:36,181 - INFO - 🔄 強制重新抓取模式：將重新處理 https://tixcraft.com/activity/detail/26_mltr
+2026-02-25 15:11:37,127 - INFO - 🔍 開始 JS 監控 dataLayer，最多等待 5 秒...
+2026-02-25 15:12:07,138 - ERROR - ❌ JavaScript 執行失敗: Message: script timeout
+  (Session info: chrome=145.0.7632.110)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xd57dd3
+	0xd57e14
+	0xb61bee
+	0xbecb49
+	0xbcea3c
+	0xbeb621
+	0xbce7d6
+	0xba0049
+	0xba0e04
+	0xfb6924
+	0xfb1bf7
+	0xfcf5a0
+	0xd70f58
+	0xd7891d
+	0xd60648
+	0xd60812
+	0xd4a21a
+	0x768cfcc9
+	0x771982ae
+	0x7719827e
+
+2026-02-25 15:12:07,218 - INFO - 💾 已即時同步至 JSON，進度: 2/12 (16.7%)
+2026-02-25 15:12:07,218 - INFO -   標題: JS執行失敗
+2026-02-25 15:12:07,219 - INFO -   演出資訊: 演出時間：2026/07/05（日）19:00 (實際演出以現場為準) ; •⁠⁠ 預 售：2026...
+2026-02-25 15:12:07,219 - INFO -   地點: 演出地點： 高雄流行音樂中心海音館...
+2026-02-25 15:12:07,219 - INFO -   票價: 票 價：VVIP 8,800 元／VIP 5,800 元／C...
+2026-02-25 15:12:07,219 - INFO - ⏱️ 隨機延遲 6.8 秒...
+2026-02-25 15:12:13,972 - INFO - 📋 處理活動 3/12: https://tixcraft.com/activity/detail/26_kamenashi
+2026-02-25 15:12:13,972 - INFO - 🔄 強制重新抓取模式：將重新處理 https://tixcraft.com/activity/detail/26_kamenashi
+2026-02-25 15:12:15,664 - INFO - 🔍 開始 JS 監控 dataLayer，最多等待 5 秒...
+2026-02-25 15:12:45,668 - ERROR - ❌ JavaScript 執行失敗: Message: script timeout
+  (Session info: chrome=145.0.7632.110)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xd57dd3
+	0xd57e14
+	0xb61bee
+	0xbecb49
+	0xbcea3c
+	0xbeb621
+	0xbce7d6
+	0xba0049
+	0xba0e04
+	0xfb6924
+	0xfb1bf7
+	0xfcf5a0
+	0xd70f58
+	0xd7891d
+	0xd60648
+	0xd60812
+	0xd4a21a
+	0x768cfcc9
+	0x771982ae
+	0x7719827e
+
+2026-02-25 15:12:45,750 - INFO - 💾 已即時同步至 JSON，進度: 3/12 (25.0%)
+2026-02-25 15:12:45,750 - INFO -   標題: JS執行失敗
+2026-02-25 15:12:45,750 - INFO -   演出資訊: 演出日期｜2026年6月27日(六) ; 演出時間｜17:00 (實際演出時間以現場公告為準) ; ...
+2026-02-25 15:12:45,750 - INFO -   地點: 演出地點｜高雄流行音樂中心(海音館)...
+2026-02-25 15:12:45,750 - INFO -   票價: 活動票價｜NT$5,200元 / NT$4,600元 / N...
+2026-02-25 15:12:45,751 - INFO - ⏱️ 隨機延遲 5.5 秒...
+2026-02-25 15:12:51,293 - INFO - 📋 處理活動 4/12: https://tixcraft.com/activity/detail/26_anson_c
+2026-02-25 15:12:51,293 - INFO - 🔄 強制重新抓取模式：將重新處理 https://tixcraft.com/activity/detail/26_anson_c
+2026-02-25 15:12:52,499 - INFO - 🔍 開始 JS 監控 dataLayer，最多等待 5 秒...
+2026-02-25 15:13:22,513 - ERROR - ❌ JavaScript 執行失敗: Message: script timeout
+  (Session info: chrome=145.0.7632.110)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xd57dd3
+	0xd57e14
+	0xb61bee
+	0xbecb49
+	0xbcea3c
+	0xbeb621
+	0xbce7d6
+	0xba0049
+	0xba0e04
+	0xfb6924
+	0xfb1bf7
+	0xfcf5a0
+	0xd70f58
+	0xd7891d
+	0xd60648
+	0xd60812
+	0xd4a21a
+	0x768cfcc9
+	0x771982ae
+	0x7719827e
+
+2026-02-25 15:13:22,605 - INFO - 💾 已即時同步至 JSON，進度: 4/12 (33.3%)
+2026-02-25 15:13:22,606 - INFO -   標題: JS執行失敗
+2026-02-25 15:13:22,606 - INFO -   演出資訊: 時間：2026/ 05/ 25（一）20:00 ; DATE：2026/5/25 (MON) 20:...
+2026-02-25 15:13:22,606 - INFO -   地點: 5 月 25 日 Legacy Taipei 溫暖開唱 ; ...
+2026-02-25 15:13:22,606 - INFO -   票價: 票價：NT$ 1,980 / 990 (身障優惠票) ; D...
+2026-02-25 15:13:22,606 - INFO - ⏱️ 隨機延遲 3.3 秒...
+2026-02-25 15:13:25,922 - INFO - 📋 處理活動 5/12: https://tixcraft.com/activity/detail/26_anson
+2026-02-25 15:13:25,923 - INFO - 🔄 強制重新抓取模式：將重新處理 https://tixcraft.com/activity/detail/26_anson
+2026-02-25 15:13:26,689 - INFO - 🔍 開始 JS 監控 dataLayer，最多等待 5 秒...
+2026-02-25 15:13:56,701 - ERROR - ❌ JavaScript 執行失敗: Message: script timeout
+  (Session info: chrome=145.0.7632.110)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xd57dd3
+	0xd57e14
+	0xb61bee
+	0xbecb49
+	0xbcea3c
+	0xbeb621
+	0xbce7d6
+	0xba0049
+	0xba0e04
+	0xfb6924
+	0xfb1bf7
+	0xfcf5a0
+	0xd70f58
+	0xd7891d
+	0xd60648
+	0xd60812
+	0xd4a21a
+	0x768cfcc9
+	0x771982ae
+	0x7719827e
+
+2026-02-25 15:13:56,792 - INFO - 💾 已即時同步至 JSON，進度: 5/12 (41.7%)
+2026-02-25 15:13:56,793 - INFO -   標題: JS執行失敗
+2026-02-25 15:13:56,793 - INFO -   演出資訊: 時間：2026/ 05/ 25（一）20:00 ; 時間：2026/01/19 (一) 11:00 ...
+2026-02-25 15:13:56,793 - INFO -   地點: 5 月 25 日 Legacy Taipei 溫暖開唱 ; ...
+2026-02-25 15:13:56,793 - INFO -   票價: 票價：NT$ 1,980 / 990 (身障優惠票) ; 時...
+2026-02-25 15:13:56,793 - INFO - ⏱️ 隨機延遲 4.4 秒...
+2026-02-25 15:14:01,225 - INFO - 📋 處理活動 6/12: https://tixcraft.com/activity/detail/26_ztmy_a
+2026-02-25 15:14:01,225 - INFO - 🔄 強制重新抓取模式：將重新處理 https://tixcraft.com/activity/detail/26_ztmy_a
+2026-02-25 15:14:03,022 - INFO - 🔍 開始 JS 監控 dataLayer，最多等待 5 秒...
+2026-02-25 15:14:33,029 - ERROR - ❌ JavaScript 執行失敗: Message: script timeout
+  (Session info: chrome=145.0.7632.110)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xd57dd3
+	0xd57e14
+	0xb61bee
+	0xbecb49
+	0xbcea3c
+	0xbeb621
+	0xbce7d6
+	0xba0049
+	0xba0e04
+	0xfb6924
+	0xfb1bf7
+	0xfcf5a0
+	0xd70f58
+	0xd7891d
+	0xd60648
+	0xd60812
+	0xd4a21a
+	0x768cfcc9
+	0x771982ae
+	0x7719827e
+
+2026-02-25 15:14:33,154 - INFO - 💾 已即時同步至 JSON，進度: 6/12 (50.0%)
+2026-02-25 15:14:33,154 - INFO -   標題: JS執行失敗
+2026-02-25 15:14:33,154 - INFO -   演出資訊: ZUTOMAYO 確定將於 5/16-17 在台北與歌迷見面，展開 INTENSE II「坐・ZOM...
+2026-02-25 15:14:33,154 - INFO -   地點: 🎸演出地點：新北市工商展覽中心（新北市五股區五權路1號）...
+2026-02-25 15:14:33,154 - INFO -   票價: 2026/2/8（日）15:30之前刷卡失敗之訂單，將陸續轉...
+2026-02-25 15:14:33,155 - INFO - ⏱️ 隨機延遲 3.1 秒...
+2026-02-25 15:14:36,274 - INFO - 📋 處理活動 7/12: https://tixcraft.com/activity/detail/26_chyiyu
+2026-02-25 15:14:36,274 - INFO - 🔄 強制重新抓取模式：將重新處理 https://tixcraft.com/activity/detail/26_chyiyu
+2026-02-25 15:14:37,799 - INFO - 🔍 開始 JS 監控 dataLayer，最多等待 5 秒...
