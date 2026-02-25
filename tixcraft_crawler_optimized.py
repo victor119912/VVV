@@ -119,7 +119,7 @@ class TixcraftScraperOptimized:
                     location_info.append(line)
                     continue
             
-            # === 票價資訊分類 ===
+            # === 票價資訊分類 (強化版) ===
             price_patterns = [
                 r'票價[：:\s]*',
                 r'活動票價[：:\s]*',
@@ -130,15 +130,20 @@ class TixcraftScraperOptimized:
                 r'VIP.*?\$\d+|VVIP.*?\$\d+',  # VIP票價
                 r'\$\d+[\s/]*',  # $數字
                 r'門票[：:\s]*.*?\d+',  # 門票+數字
+                r'售價[：:\s]*',
+                r'票券[：:\s]*',
+                r'\d+(?:,\d{3})*元',  # 千分位數字+元 (如: 1,200元)
+                r'全票.*?\d+|半票.*?\d+',  # 全票/半票
             ]
             
             if any(re.search(pattern, line, re.IGNORECASE) for pattern in price_patterns):
-                # 進一步確認是票價相關
-                if re.search(r'NT\$|\d+元|\$\d+|價格|票價|PRICE|VIP|身障', line, re.IGNORECASE):
-                    price_info.append(line)
-                    continue
+                # 進一步確認是票價相關，但排除日期時間
+                if re.search(r'NT\$|\d+元|\$\d+|價格|票價|PRICE|VIP|身障|售價|票券', line, re.IGNORECASE):
+                    if not re.search(r'202[0-9]|月|日|時|分|：\d{2}', line):  # 排除日期時間
+                        price_info.append(line)
+                        continue
             
-            # === 售票時間分類 ===
+            # === 售票時間分類 (強化版) ===
             sale_patterns = [
                 r'開賣[：:\s]*',
                 r'售票時間[：:\s]*',
@@ -147,12 +152,19 @@ class TixcraftScraperOptimized:
                 r'全面開賣[：:\s]*',
                 r'預購[：:\s]*',
                 r'Sale[：:\s]*.*?202[0-9]',
+                r'購票[：:\s]*.*?202[0-9]',
+                r'發售[：:\s]*.*?202[0-9]',
+                r'會員.*?202[0-9].*?開賣',
+                r'一般.*?202[0-9].*?開賣',
+                r'\d+/\d+.*?開賣|開賣.*?\d+/\d+',  # 包含開賣的日期格式
             ]
             
             if any(re.search(pattern, line, re.IGNORECASE) for pattern in sale_patterns):
-                if re.search(r'202[0-9]', line):  # 必須包含年份
-                    sale_time_info.append(line)
-                    continue
+                if re.search(r'202[0-9]|\d+月\d+日', line):  # 必須包含年份或中文日期
+                    # 排除單純的演出日期
+                    if re.search(r'開賣|預售|售票|預購|購票|發售|Sale', line, re.IGNORECASE):
+                        sale_time_info.append(line)
+                        continue
             
             # === 演出時間分類 (更精確) ===
             time_patterns = [
@@ -186,6 +198,65 @@ class TixcraftScraperOptimized:
         print(f"   🎟️ 售票資訊: {len(sale_time_info)} 條")
         
         return result
+    
+    def get_data_from_js(self):
+        """從JavaScript dataLayer抓取artistName（with 10秒超時機制）"""
+        print("🔍 正在嘗試從JavaScript dataLayer提取標題...")
+        
+        max_wait = 10  # 最多等待10秒
+        wait_count = 0
+        
+        while wait_count < max_wait:
+            try:
+                # 檢查 dataLayer 是否存在且包含 artistName
+                js_code = """
+                if (typeof dataLayer !== 'undefined' && dataLayer.length > 0) {
+                    for (let i = 0; i < dataLayer.length; i++) {
+                        if (dataLayer[i].artistName) {
+                            return dataLayer[i].artistName;
+                        }
+                    }
+                }
+                return null;
+                """
+                
+                result = self.driver.execute_script(js_code)
+                
+                if result:
+                    print(f"✅ 從 dataLayer 成功提取到標題: {result}")
+                    return result
+                
+                # 如果沒有找到 artistName，等待1秒後重試
+                sleep(1)
+                wait_count += 1
+                print(f"⏳ 等待 dataLayer 載入... ({wait_count}/{max_wait}秒)")
+                
+            except Exception as e:
+                print(f"⚠️ JS執行錯誤: {e}，1秒後重試...")
+                sleep(1)
+                wait_count += 1
+        
+        print(f"❌ 經過{max_wait}秒等待，未能從dataLayer獲取標題")
+        return None
+    
+    def get_fallback_title(self):
+        """保底標題提取：使用網頁標籤title"""
+        try:
+            page_title = self.driver.title
+            if page_title:
+                # 使用 split('-')[0] 提取標題的第一部分
+                clean_title = page_title.split('-')[0].strip()
+                if clean_title:
+                    print(f"✅ 使用網頁標籤作為保底標題: {clean_title}")
+                    return clean_title
+            
+            # 如果連網頁標籤都沒有，使用預設文字
+            print("⚠️ 網頁標籤為空，使用預設標題")
+            return "請參閱官網詳細說明"
+            
+        except Exception as e:
+            print(f"❌ 提取保底標題失敗: {e}")
+            return "請參閱官網詳細說明"
     
     def extract_alternative_content(self):
         """備用資料抓取：嘗試從p標籤或其他元素獲取資訊"""
@@ -282,30 +353,60 @@ class TixcraftScraperOptimized:
         return driver
     
     def scrape_activity_list(self):
-        """第一層：抓取所有演出活動的網址清單"""
+        """第一層：抓取所有演出活動的網址清單（修正版 - 確保抓取所有43個活動）"""
         
         try:
             print(f"\n🌐 正在載入拓元售票活動列表頁面...")
             self.driver.get(self.base_url)
-            sleep(5)  # 等待 JavaScript 動態內容載入
+            sleep(8)  # 增加等待時間確保 JavaScript 動態內容完全載入
             print("✅ 頁面載入完成")
             
-            # === 使用指定的選擇器搜尋活動連結 ===
-            print("\n🔍 正在搜尋演出活動連結 (使用 div.thumbnails a)...")
+            # === 多重選擇器策略確保抓取所有活動 ===
+            print("\n🔍 正在搜尋演出活動連結 (多重策略)...")
             
-            # 優先使用指定的 div.thumbnails a 選擇器
-            activity_links = self.driver.find_elements(By.CSS_SELECTOR, "div.thumbnails a")
+            activity_links = []
             
-            # 如果沒找到，嘗試備用選擇器
+            # 策略1：指定的 div.thumbnails a
+            try:
+                links = self.driver.find_elements(By.CSS_SELECTOR, "div.thumbnails a")
+                if links:
+                    activity_links.extend(links)
+                    print(f"   策略1 (div.thumbnails a): 找到 {len(links)} 個連結")
+            except Exception as e:
+                print(f"   策略1失敗: {e}")
+            
+            # 策略2：所有包含 activity/detail 的 a 標籤
+            try:
+                links = self.driver.find_elements(By.CSS_SELECTOR, "a[href*='activity/detail']")
+                if links:
+                    activity_links.extend(links)
+                    print(f"   策略2 (a[href*='activity/detail']): 找到 {len(links)} 個連結")
+            except Exception as e:
+                print(f"   策略2失敗: {e}")
+            
+            # 策略3：class包含thumbnail的元素內的a標籤
+            try:
+                links = self.driver.find_elements(By.CSS_SELECTOR, "[class*='thumbnail'] a, [class*='thumb'] a")
+                if links:
+                    activity_links.extend(links)
+                    print(f"   策略3 ([class*='thumbnail'] a): 找到 {len(links)} 個連結")
+            except Exception as e:
+                print(f"   策略3失敗: {e}")
+            
+            # 策略4：所有class包含activity的a標籤
+            try:
+                links = self.driver.find_elements(By.CSS_SELECTOR, "a[class*='activity'], [class*='activity'] a")
+                if links:
+                    activity_links.extend(links)
+                    print(f"   策略4 (activity相關class): 找到 {len(links)} 個連結")
+            except Exception as e:
+                print(f"   策略4失敗: {e}")
+            
             if not activity_links:
-                print("⚠️ 使用備用選擇器搜尋...")
-                activity_links = self.driver.find_elements(By.CSS_SELECTOR, "a[href*='activity/detail']")
-            
-            if not activity_links:
-                print("❌ 未找到任何演出連結")
+                print("❌ 所有策略都未找到任何演出連結")
                 return []
             
-            print(f"✅ 找到 {len(activity_links)} 個演出連結")
+            print(f"✅ 總共找到 {len(activity_links)} 個候選連結")
             
             # 提取唯一的連結並過濾重複
             unique_urls = set()
@@ -314,7 +415,7 @@ class TixcraftScraperOptimized:
             for link in activity_links:
                 try:
                     url = link.get_attribute('href')
-                    if url and 'activity/detail' in url and url not in unique_urls:
+                    if url and ('activity/detail' in url or '/activity/' in url) and url not in unique_urls:
                         unique_urls.add(url)
                         valid_links.append(url)
                 except Exception as e:
@@ -322,6 +423,23 @@ class TixcraftScraperOptimized:
                     continue
             
             print(f"📊 過濾重複後獲得唯一連結 {len(valid_links)} 個")
+            
+            if len(valid_links) < 30:  # 如果連結數太少，嘗試更廣泛的搜尋
+                print("⚠️ 連結數量偏少，嘗試廣泛搜尋...")
+                try:
+                    all_links = self.driver.find_elements(By.TAG_NAME, "a")
+                    for link in all_links:
+                        try:
+                            url = link.get_attribute('href')
+                            if url and ('/activity/' in url or 'tixcraft.com' in url) and 'detail' in url and url not in unique_urls:
+                                unique_urls.add(url)
+                                valid_links.append(url)
+                        except:
+                            continue
+                    print(f"📊 擴展搜尋後獲得連結 {len(valid_links)} 個")
+                except Exception as e:
+                    print(f"擴展搜尋失敗: {e}")
+            
             print(f"\n📋 活動網址清單：")
             for i, url in enumerate(valid_links, 1):
                 print(f"   {i}. {url}")
@@ -355,15 +473,34 @@ class TixcraftScraperOptimized:
             self.driver.get(url)
             sleep(2)  # 避免切換頁面太快被網站阻擋
             
-            # === 抓取演出項目名稱 (ID: synopsisEventTitle) ===
+            # === 智能標題抓取 (優先順序: JS > HTML > 保底) ===
+            title_found = False
+            
+            # 優先1: 嘗試從 JavaScript dataLayer 提取
             try:
-                title_element = self.driver.find_element(By.ID, "synopsisEventTitle")
-                title = self.clean_text(title_element.text) if title_element.text else "請參閱官網詳細說明"
-                event_data['title'] = title if title else "請參閱官網詳細說明"
-                print(f"🎭 演出項目名稱: {event_data['title']}")
+                js_title = self.get_data_from_js()
+                if js_title:
+                    event_data['title'] = self.clean_text(js_title)
+                    title_found = True
+                    print(f"🎭 演出項目名稱 (JS): {event_data['title']}")
             except Exception as e:
-                print(f"⚠️ 無法抓取演出項目名稱: {e}")
-                print(f"🎭 演出項目名稱: 請參閱官網詳細說明")
+                print(f"⚠️ JS標題提取失敗: {e}")
+            
+            # 優先2: 嘗試從 HTML synopsisEventTitle 提取
+            if not title_found:
+                try:
+                    title_element = self.driver.find_element(By.ID, "synopsisEventTitle")
+                    if title_element.text and len(title_element.text.strip()) > 0:
+                        event_data['title'] = self.clean_text(title_element.text)
+                        title_found = True
+                        print(f"🎭 演出項目名稱 (HTML): {event_data['title']}")
+                except Exception as e:
+                    print(f"⚠️ 無法抓取HTML標題: {e}")
+            
+            # 保底3: 使用網頁標籤作為最後手段
+            if not title_found:
+                event_data['title'] = self.get_fallback_title()
+                print(f"🎭 演出項目名稱 (保底): {event_data['title']}")
             
             # === 抓取演出詳細資訊 (ID: intro) ===
             content_found = False
