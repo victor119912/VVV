@@ -300,3 +300,37 @@ Symbols not available. Dumping unresolved backtrace:
 2026-02-25 15:14:36,274 - INFO - 📋 處理活動 7/12: https://tixcraft.com/activity/detail/26_chyiyu
 2026-02-25 15:14:36,274 - INFO - 🔄 強制重新抓取模式：將重新處理 https://tixcraft.com/activity/detail/26_chyiyu
 2026-02-25 15:14:37,799 - INFO - 🔍 開始 JS 監控 dataLayer，最多等待 5 秒...
+2026-02-25 15:15:07,812 - ERROR - ❌ JavaScript 執行失敗: Message: script timeout
+  (Session info: chrome=145.0.7632.110)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xd57dd3
+	0xd57e14
+	0xb61bee
+	0xbecb49
+	0xbcea3c
+	0xbeb621
+	0xbce7d6
+	0xba0049
+	0xba0e04
+	0xfb6924
+	0xfb1bf7
+	0xfcf5a0
+	0xd70f58
+	0xd7891d
+	0xd60648
+	0xd60812
+	0xd4a21a
+	0x768cfcc9
+	0x771982ae
+	0x7719827e
+
+2026-02-25 15:15:07,927 - INFO - 💾 已即時同步至 JSON，進度: 7/12 (58.3%)
+2026-02-25 15:15:07,927 - INFO -   標題: JS執行失敗
+2026-02-25 15:15:07,927 - INFO -   演出資訊: 演出時間: 5月9日(六) 19:30 PM ; 票價 : 4270/3770/3270/2770/...
+2026-02-25 15:15:07,927 - INFO -   地點: 地點:台北流行音樂中心...
+2026-02-25 15:15:07,927 - INFO -   票價: 2026/01/23（五）11:30之前刷卡失敗之訂單，將陸...
+2026-02-25 15:15:07,927 - INFO - ⏱️ 隨機延遲 6.4 秒...
+2026-02-25 15:15:14,346 - INFO - 📋 處理活動 8/12: https://tixcraft.com/activity/detail/26_cxm_d
+2026-02-25 15:15:14,347 - INFO - 🔄 強制重新抓取模式：將重新處理 https://tixcraft.com/activity/detail/26_cxm_d
+2026-02-25 15:15:15,186 - INFO - 🔍 開始 JS 監控 dataLayer，最多等待 5 秒...
