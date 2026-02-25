@@ -74,28 +74,7 @@ def scrape_event_details(driver):
         intro_text = intro_element.text.strip()
         
         if intro_text:
-            print("✅ 演出詳細資訊：")
-            print("=" * 50)
-            
-            # 逐行處理並分類顯示
-            lines = intro_text.split('\n')
-            for line in lines:
-                line = line.strip()
-                if line:  # 跳過空行
-                    # 根據關鍵字分類顯示
-                    if any(keyword in line for keyword in ['日期', '時間', '場次']):
-                        print(f"📅 {line}")
-                    elif any(keyword in line for keyword in ['地點', '場地', '館']):
-                        print(f"📍 {line}")
-                    elif any(keyword in line for keyword in ['票價', '價格', '元', '$', 'NT']):
-                        print(f"💰 {line}")
-                    elif any(keyword in line for keyword in ['售票', '開賣', '預售']):
-                        print(f"🎫 {line}")
-                    else:
-                        print(f"ℹ️  {line}")
-            
-            print("=" * 50)
-            return intro_text
+            return parse_event_details(intro_text)
         else:
             print("⚠️ intro 區塊內容為空")
             return None
@@ -106,6 +85,99 @@ def scrape_event_details(driver):
     except Exception as e:
         print(f"❌ 抓取演出詳情時發生錯誤：{e}")
         return None
+
+
+def parse_event_details(intro_text):
+    """解析並格式化演出詳細資訊"""
+    lines = intro_text.split('\n')
+    
+    # 初始化資料字典
+    event_data = {
+        'date': '',
+        'time': '',
+        'venue': '',
+        'prices': [],
+        'sale_time': '',
+        'organizer': '',
+        'description': []
+    }
+    
+    # 解析每一行資料
+    for line in lines:
+        line = line.strip()
+        if not line or line == '-':
+            continue
+            
+        # 演出日期
+        if '演出日期' in line:
+            event_data['date'] = line.replace('演出日期｜', '').replace('演出日期：', '')
+        
+        # 演出時間
+        elif '演出時間' in line:
+            event_data['time'] = line.replace('演出時間｜', '').replace('演出時間：', '')
+        
+        # 演出地點
+        elif '演出地點' in line or '場地' in line:
+            event_data['venue'] = line.replace('演出地點｜', '').replace('演出地點：', '')
+        
+        # 票價資訊
+        elif '活動票價' in line or (('NT$' in line or '元' in line) and '票價' in line):
+            event_data['prices'].append(line.replace('活動票價｜', ''))
+        elif 'NT$' in line and '元' in line and '票價' not in line:
+            event_data['prices'].append(line)
+        
+        # 售票時間
+        elif '售票時間' in line:
+            event_data['sale_time'] = line.replace('售票時間｜', '').replace('售票時間：', '')
+        
+        # 主辦單位
+        elif '主辦單位' in line:
+            event_data['organizer'] = line.replace('主辦單位｜', '').replace('主辦單位：', '')
+        
+        # 其他描述
+        else:
+            if not line.startswith('票價$') and not line.startswith('#'):
+                event_data['description'].append(line)
+    
+    # 格式化輸出
+    display_formatted_data(event_data)
+    return event_data
+
+
+def display_formatted_data(data):
+    """清晰格式化顯示資料"""
+    print("\n" + "=" * 60)
+    print("🎭 演出活動詳細資訊")
+    print("=" * 60)
+    
+    if data['date']:
+        print(f"📅 演出日期：{data['date']}")
+    
+    if data['time']:
+        print(f"⏰ 演出時間：{data['time']}")
+    
+    if data['venue']:
+        print(f"📍 演出地點：{data['venue']}")
+    
+    if data['prices']:
+        print(f"💰 票價資訊：")
+        for price in data['prices']:
+            if price.strip():
+                print(f"   • {price}")
+    
+    if data['sale_time']:
+        print(f"🎫 售票時間：{data['sale_time']}")
+    
+    if data['organizer']:
+        print(f"🏢 主辦單位：{data['organizer']}")
+    
+    if data['description']:
+        print(f"📋 活動描述：")
+        for desc in data['description'][:3]:  # 只顯示前3行描述
+            if desc.strip() and len(desc) > 5:
+                print(f"   • {desc}")
+    
+    print("=" * 60)
 
 
 def scrape_additional_info(driver):
@@ -165,23 +237,21 @@ def main():
         # 5. 抓取演出詳細資訊
         event_details = scrape_event_details(driver)
         
-        # 6. 嘗試抓取其他資訊
-        additional_info = scrape_additional_info(driver)
+        # 6. 顯示完整摘要
+        print("\n🎉 資料抓取完成!")
+        print("🔍 以下是完整的演出資訊摘要：")
         
-        # 7. 顯示抓取總結
-        print("\n🎉 資訊抓取完成!")
-        print("=" * 60)
+        if event_title:
+            print(f"\n🎭 【演出項目】")
+            print(f"    {event_title}")
         
-        if event_title or event_details or additional_info:
-            print("✅ 成功抓取到以下資訊：")
-            if event_title:
-                print(f"- 演出項目標題")
-            if event_details:
-                print(f"- 演出詳細資訊 ({len(event_details.split())} 個字)")
-            if additional_info:
-                print(f"- 其他資訊 ({len(additional_info)} 項)")
-        else:
-            print("⚠️ 未能抓取到任何資訊，可能需要檢查網頁結構")
+        if not event_details:
+            print("\n⚠️ 未能抓取到詳細資訊，可能需要檢查網頁結構或等待頁面完全載入")
+        
+        print(f"\n📊 抓取狀態：")
+        print(f"   ✅ 演出標題：{'成功' if event_title else '失敗'}")
+        print(f"   ✅ 詳細資訊：{'成功' if event_details else '失敗'}")
+        print(f"   🔍 網頁來源：{target_url}")
             
     except KeyboardInterrupt:
         print("\n⚠️ 程式被使用者中斷")
