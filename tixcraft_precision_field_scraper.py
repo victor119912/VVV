@@ -1,6 +1,7 @@
 import json
 import re
 import time
+import random
 import logging
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -76,32 +77,87 @@ class TixcraftPrecisionFieldScraper:
         self.logger.info(f"資料合併完成：更新 {updated_count} 個活動，新增 {new_count} 個活動，總計 {len(merged_events)} 個活動")
         return merged_events
         
+    def get_random_user_agent(self):
+        """隨機選擇真實的 User-Agent 字串"""
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+        ]
+        return random.choice(user_agents)
+        
     def setup_driver(self):
-        """設置Chrome瀏覽器選項"""
+        """設置Chrome瀏覽器選項 - 強化版反偵測功能"""
         chrome_options = Options()
-        chrome_options.add_argument('--headless')
+        
+        # 關閉 Headless 模式以便手動驗證
+        # chrome_options.add_argument('--headless')
+        
+        # 基本穩定性設定
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--window-size=1920,1080')
+        chrome_options.add_argument('--window-size=1366,768')  # 常見解析度
         
-        # 反偵測設置
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        # 強化版 WebDriver 特徵隱藏
+        chrome_options.add_experimental_option("excludeSwitches", [
+            "enable-automation",
+            "enable-logging",
+            "disable-extensions",
+            "test-type",
+            "disable-background-timer-throttling",
+            "disable-renderer-backgrounding",
+            "disable-backgrounding-occluded-windows"
+        ])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         
-        # 設置用戶代理
-        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        # 隨機 User-Agent
+        user_agent = self.get_random_user_agent()
+        chrome_options.add_argument(f'--user-agent={user_agent}')
+        self.logger.info(f"使用 User-Agent: {user_agent}")
+        
+        # 進階反偵測設定
+        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+        chrome_options.add_argument('--disable-extensions')
+        chrome_options.add_argument('--no-first-run')
+        chrome_options.add_argument('--disable-default-apps')
+        chrome_options.add_argument('--disable-infobars')
+        chrome_options.add_argument('--disable-notifications')
+        chrome_options.add_argument('--disable-popup-blocking')
+        
+        # 模擬真實瀏覽行為
+        chrome_options.add_argument('--start-maximized')
+        chrome_options.add_preference('profile.default_content_setting_values.notifications', 2)
+        chrome_options.add_preference('profile.default_content_settings.popups', 0)
         
         try:
             service = ChromeService(ChromeDriverManager().install())
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
             
-            # 執行反偵測腳本
+            # 執行強化版反偵測腳本
             self.driver.execute_cdp_cmd('Runtime.evaluate', {
                 "expression": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
             })
             
-            self.logger.info("Chrome瀏覽器已成功啟動")
+            # 隱藏 Selenium 標識
+            self.driver.execute_cdp_cmd('Runtime.evaluate', {
+                "expression": "Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]})"
+            })
+            
+            self.driver.execute_cdp_cmd('Runtime.evaluate', {
+                "expression": "Object.defineProperty(navigator, 'languages', {get: () => ['zh-TW', 'zh', 'en']})"
+            })
+            
+            self.driver.execute_cdp_cmd('Runtime.evaluate', {
+                "expression": "window.chrome = { runtime: {} };"
+            })
+            
+            self.logger.info("Chrome瀏覽器已成功啟動（反偵測模式）")
         except Exception as e:
             self.logger.error(f"Chrome瀏覽器啟動失敗：{e}")
             raise
@@ -286,7 +342,7 @@ class TixcraftPrecisionFieldScraper:
             WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
-            time.sleep(2)  # 確保 JS 載入完成
+            time.sleep(random.uniform(3, 6))  # 隨機等待 3-6 秒
             
             # 優先使用 JavaScript dataLayer 提取精確數據
             js_data = self.get_clean_data_from_js(self.driver)
@@ -405,8 +461,14 @@ class TixcraftPrecisionFieldScraper:
                 if event_data['title'] != "錯誤":
                     success_count += 1
                     
-                # 避免過快請求
-                time.sleep(1)
+                # 隨機等待時間，模擬真實瀏覽行為
+                time.sleep(random.uniform(2, 4))
+                
+                # 每 5 個活動就休息 8-12 秒
+                if index % 5 == 0:
+                    rest_time = random.uniform(8, 12)
+                    self.logger.info(f"已處理 {index} 個活動，休息 {rest_time:.1f} 秒以避免被封鎖...")
+                    time.sleep(rest_time)
             
             # 計算統計數據
             success_rate = (success_count / len(events)) * 100 if events else 0
