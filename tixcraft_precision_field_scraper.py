@@ -277,11 +277,11 @@ class TixcraftPrecisionFieldScraper:
             "location": ""
         }
         
-    def extract_event_info(self, lines):
-        """【合併版】演出資訊提取 - 統一處理日期時間資訊"""
+    def extract_event_info(self, lines, js_data=None):
+        """【合併版+暴力補全】演出資訊提取 - 統一處理日期時間資訊"""
         event_info_lines = []
         
-        # 擴展的日期時間匹配模式
+        # 第一優先權：正常的日期時間匹配
         datetime_patterns = [
             r'\d{4}/\d{1,2}/\d{1,2}',     # YYYY/MM/DD 日期格式
             r'\d{1,2}/\d{1,2}/\d{4}',     # MM/DD/YYYY 日期格式  
@@ -314,40 +314,104 @@ class TixcraftPrecisionFieldScraper:
                 if clean_line and clean_line not in event_info_lines:
                     event_info_lines.append(clean_line)
         
+        # 【暴力保底】如果JS抓不到或內容不足，使用intro前5行作為保底
+        if (not event_info_lines or 
+            (js_data and js_data.get('title') in ['JS提取失敗', 'JS監控超時', '未抓到標題'])):
+            
+            self.logger.info("  [暴力保底] 使用intro前5行作為event_info保底")
+            fallback_lines = []
+            for i, line in enumerate(lines[:5]):  # 取前5行
+                if line.strip() and len(line.strip()) > 5:  # 過濾掉太短的行
+                    clean_line = self.clean_text(line)
+                    if clean_line not in fallback_lines:
+                        fallback_lines.append(clean_line)
+            
+            if fallback_lines:
+                if event_info_lines:
+                    # 如果已有部分資訊，將保底資訊追加
+                    event_info_lines.extend(fallback_lines)
+                else:
+                    # 如果完全沒有資訊，使用保底資訊
+                    event_info_lines = fallback_lines
+        
+        # 去重複清洗：移除重複的前綴詞
+        cleaned_lines = []
+        for line in event_info_lines:
+            # 移除重複的前綴詞
+            prefixes_to_remove = ['演出資訊：', '時間：', '日期：', '活動資訊：', 'EVENT INFO：']
+            clean_line = line
+            for prefix in prefixes_to_remove:
+                if clean_line.startswith(prefix):
+                    clean_line = clean_line[len(prefix):].strip()
+                    break
+            
+            if clean_line and clean_line not in cleaned_lines:
+                cleaned_lines.append(clean_line)
+        
         # 合併所有相關資訊，用分號分隔
-        if event_info_lines:
-            return ' ; '.join(event_info_lines)
+        if cleaned_lines:
+            return ' ; '.join(cleaned_lines[:8])  # 最多保留前8行，避免過度冗長
         
         return "未找到"
         
     def extract_precise_price(self, lines):
-        """活動票價提取 - 放寬規則版"""
+        """【暴力版】活動票價提取 - 寧可抓錯絕不漏掉"""
+        price_lines = []
+        
+        # 第一優先權：包含貨幣符號的行
         for line in lines:
-            # 移除長度限制，改用 Regex 提取
-            # 必須包含 NT$ 或 元
             price_matches = re.findall(r'NT\$\s?[\d,]+|[\d,]+元', line)
-            
             if price_matches:
-                # 檢查是否包含票價相關關鍵字
                 price_keywords = ['票價', 'Price', 'NT$', '元', 'VIP', 'VVIP', 'A區', 'B區']
                 if any(keyword in line for keyword in price_keywords):
-                    return self.clean_text(line)
+                    clean_line = self.clean_text(line)
+                    if clean_line not in price_lines:
+                        price_lines.append(clean_line)
+        
+        # 第二優先權：暴力搜索票價相關關鍵字（即使沒有NT$）
+        if not price_lines:
+            price_keywords_extended = [
+                '票價', 'PRICE', 'Price', '免費', 'FREE', 'Free',
+                '費用', '價格', '收費', '金額', '定價', '售價',
+                'VIP', 'VVIP', 'GA', '預售', '現場票', '身障'
+            ]
+            
+            for line in lines:
+                # 排除明顯的干擾內容
+                if any(exclude in line for exclude in ['退票', '手續費', '注意事項', '規定']):
+                    continue
                     
+                # 只要包含價格關鍵字就抓
+                if any(keyword in line for keyword in price_keywords_extended):
+                    clean_line = self.clean_text(line)
+                    if clean_line and clean_line not in price_lines:
+                        price_lines.append(clean_line)
+        
+        # 合併所有找到的價格資訊
+        if price_lines:
+            return ' ; '.join(price_lines)
+        
         return "未找到"
         
     def extract_precise_location(self, lines, js_data=None):
-        """【精簡版】演出地點提取 - 自動截斷冗長內容"""
-        # 如果 JS 的 dataLayer 物件裡有場館資訊，優先使用
+        """【暴力版】演出地點提取 - 擴大搜索範圍"""
+        location_lines = []
+        
+        # 第一優先權：JS dataLayer 資訊
         if js_data:
             if js_data.get('venue_info') and js_data['venue_info'].strip():
                 venue_info = self.clean_text(js_data['venue_info'])
-                return self.simplify_location(venue_info)
+                simplified = self.simplify_location(venue_info)
+                if simplified != "未找到":
+                    return simplified
             if js_data.get('location') and js_data['location'].strip():
                 location = self.clean_text(js_data['location'])
-                return self.simplify_location(location)
+                simplified = self.simplify_location(location)
+                if simplified != "未找到":
+                    return simplified
         
-        # 場館關鍵字
-        location_keywords = [
+        # 第二優先權：標準場館關鍵字
+        location_keywords_primary = [
             '地點', 'Venue', '館', '體育場', '中心', 'Legacy', 'Zepp', 
             '演出地點', '活動地點', '舉辦地點', '場地', 'Arena', '巨蛋',
             '音樂中心', '展覽館', '體育館', '演藝廳', '劇院', '音樂廳',
@@ -355,22 +419,50 @@ class TixcraftPrecisionFieldScraper:
         ]
         
         for line in lines:
-            if any(keyword in line for keyword in location_keywords):
-                # 優先權處理：如果同時出現「地點」與「注意事項」
+            if any(keyword in line for keyword in location_keywords_primary):
                 if '地點' in line and '注意事項' in line:
                     location_part = line.split('注意事項')[0]
                     clean_location = self.clean_text(location_part)
-                    return self.simplify_location(clean_location)
+                    simplified = self.simplify_location(clean_location)
+                    if simplified not in location_lines:
+                        location_lines.append(simplified)
                 else:
                     clean_location = self.clean_text(line)
-                    return self.simplify_location(clean_location)
+                    simplified = self.simplify_location(clean_location)
+                    if simplified not in location_lines:
+                        location_lines.append(simplified)
         
-        # JS 備援：如果找不到地點，嘗試從主辦方找線索
-        if js_data and js_data.get('promoter') and js_data['promoter'] != 'N/A':
-            promoter = js_data['promoter']
-            if any(venue in promoter for venue in ['台北', '高雄', '台中', '新北']):
-                return self.clean_text(f"主辦方線索：{promoter}")
+        # 第三優先權：暴力搜索擴展關鍵字
+        if not location_lines:
+            location_keywords_extended = [
+                '地址', 'VENUE', 'ADD', 'Address', '滑雪場', '展覽中心',
+                '會議中心', '活動中心', '國際會議', '流行音樂', '文化中心',
+                'SUB LIVE', 'Backstage', '後台', '巨蛋', 'Dome', 
+                '新北市', '台北市', '高雄市', '台中市', '新竹', '台南',
+                '場館', 'Stadium', 'Hall', '廳', '宮'
+            ]
+            
+            for line in lines:
+                # 排除干擾內容
+                if any(exclude in line for exclude in ['退票', '手續費', '注意事項', '規定', '提醒']):
+                    continue
                     
+                if any(keyword in line for keyword in location_keywords_extended):
+                    clean_location = self.clean_text(line)
+                    simplified = self.simplify_location(clean_location)
+                    if simplified and simplified not in location_lines:
+                        location_lines.append(simplified)
+        
+        # JS 備援：主辦方地理線索
+        if not location_lines and js_data and js_data.get('promoter') and js_data['promoter'] != 'N/A':
+            promoter = js_data['promoter']
+            if any(venue in promoter for venue in ['台北', '高雄', '台中', '新北', '新竹', '台南']):
+                location_lines.append(self.clean_text(f"主辦方線索：{promoter}"))
+        
+        # 合併結果
+        if location_lines:
+            return ' ; '.join(location_lines[:2])  # 最多顯示前2個地點資訊
+        
         return "未找到"
     
     def simplify_location(self, location_text):
@@ -400,17 +492,78 @@ class TixcraftPrecisionFieldScraper:
         
         return location_text
         
-    def extract_precise_sale_time(self, lines):
-        """售票時間獨立提取 - 專門處理售票資訊"""
-        sale_keywords = ['售票', '開賣', '啟售', '開售', '購票', '預售', '會員購']  # 擴展售票關鍵字
-        time_pattern = r'\d{1,2}:\d{2}'  # 時間格式 HH:MM
+    def extract_precise_sale_time(self, lines, js_data=None):
+        """【多行累積版】售票時間提取 - 強力黏著邏輯"""
+        sale_time_lines = []
         
+        # JS 備援加強：檢查 dataLayer 的售票相關欄位
+        if js_data:
+            js_sale_fields = ['onSaleTime', 'saleTime', 'ticketSaleTime', 'presaleTime']
+            for field in js_sale_fields:
+                if js_data.get(field) and js_data[field].strip():
+                    sale_info = self.clean_text(js_data[field])
+                    if sale_info not in sale_time_lines:
+                        sale_time_lines.append(sale_info)
+        
+        # 售票關鍵字（中英文混合，多樣化）
+        sale_keywords = [
+            '售票', '開賣', '啟售', '開售', '購票', '預售', '會員購',
+            'PRESALE', 'ON SALE', 'SALE', 'Presale', 'On Sale',
+            '搶票', '買票', '訂票', '販售', '銷售', '發售',
+            '會員預購', '優先購', '全面開賣', '正式開賣', '限時預購'
+        ]
+        
+        # 多行累積：搜集所有售票相關資訊
         for line in lines:
-            # 檢查是否包含售票關鍵字 
-            if any(keyword in line for keyword in sale_keywords):
-                # 移除長度限制，只要包含售票關鍵字就保留
-                return self.clean_text(line)
+            # 排除明顯干擾內容
+            if any(exclude in line for exclude in ['退票', '手續費', '注意事項', '規定', '提醒']):
+                continue
                 
+            # 檢查售票關鍵字
+            if any(keyword in line for keyword in sale_keywords):
+                clean_line = self.clean_text(line)
+                if clean_line and clean_line not in sale_time_lines:
+                    sale_time_lines.append(clean_line)
+        
+        # 日期格式放寬檢測：尋找包含日期的售票資訊
+        if not sale_time_lines:
+            date_patterns_extended = [
+                r'\d{4}\.\d{1,2}\.\d{1,2}',    # YYYY.MM.DD
+                r'\d{1,2}/\d{1,2}',            # MM/DD
+                r'\d{1,2}月\d{1,2}日',          # M月D日
+                r'\d{4}/\d{1,2}/\d{1,2}',      # YYYY/MM/DD
+                r'\d{1,2}:\d{2}',             # HH:MM
+                r'\d{4}-\d{1,2}-\d{1,2}'       # YYYY-MM-DD
+            ]
+            
+            for line in lines:
+                # 如果包含日期格式，可能是售票資訊
+                if any(re.search(pattern, line) for pattern in date_patterns_extended):
+                    # 進一步檢查是否可能與售票相關
+                    potential_keywords = ['時間', '日期', '開始', '截止', '期間', '階段']
+                    if any(keyword in line for keyword in potential_keywords):
+                        clean_line = self.clean_text(line)
+                        if clean_line and clean_line not in sale_time_lines:
+                            sale_time_lines.append(clean_line)
+        
+        # 去重複清洗：移除重複的前綴詞
+        cleaned_lines = []
+        for line in sale_time_lines:
+            # 移除重複的前綴詞
+            prefixes_to_remove = ['售票時間：', '時間：', '開賣時間：', '售票：', 'SALE TIME：']
+            clean_line = line
+            for prefix in prefixes_to_remove:
+                if clean_line.startswith(prefix):
+                    clean_line = clean_line[len(prefix):].strip()
+                    break
+            
+            if clean_line and clean_line not in cleaned_lines:
+                cleaned_lines.append(clean_line)
+        
+        # 合併結果
+        if cleaned_lines:
+            return ' ; '.join(cleaned_lines)
+        
         return "未找到"
         
     def extract_precise_time_backup(self, lines):
@@ -531,13 +684,13 @@ class TixcraftPrecisionFieldScraper:
                     'url': url
                 }
             
-            # 使用精確提取規則，防止位移問題 - 【合併版】
-            event_info = self.extract_event_info(lines)  # 合併日期時間資訊
+            # 使用精確提取規則，防止位移問題 - 【合併版+暴力補全】
+            event_info = self.extract_event_info(lines, js_data)  # 合併日期時間資訊 + JS數據
             
             # 修正地點提取，傳入 js_data
             location = self.extract_precise_location(lines, js_data)
             price = self.extract_precise_price(lines)
-            sale_time = self.extract_precise_sale_time(lines)
+            sale_time = self.extract_precise_sale_time(lines, js_data)  # 傳入 js_data 支援
             
             result = {
                 'index': index,
