@@ -1,12 +1,12 @@
 {
-  "scrape_time": "2026-02-28 21:07:15",
-  "last_update": "2026-02-28 21:07:15",
+  "scrape_time": "2026-02-28 21:14:42",
+  "last_update": "2026-02-28 21:14:42",
   "total_events": 45,
   "success_count": 45,
   "success_rate": "100.0%",
   "extraction_method": "realtime_precision_field_extraction",
-  "current_progress": "68/107",
-  "current_session_success": 68,
+  "current_progress": "107/107",
+  "current_session_success": 107,
   "events": [
     {
       "index": 1,
