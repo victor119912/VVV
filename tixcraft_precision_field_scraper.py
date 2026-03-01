@@ -461,14 +461,43 @@ class TixcraftPrecisionFieldScraper:
         # 【結構唯一化】過濾空殼和重複檢查
         price_lines = self.filter_empty_shells(price_lines)
         price_lines = self.remove_duplicate_lines(price_lines)
+        price_lines = [line for line in price_lines if self.is_valid_price_line(line)]
         
         # 合併所有找到的價格資訊
         if price_lines:
             return ' ; '.join(price_lines)
         
         return "未找到"
+
+    def is_valid_price_line(self, line):
+        """價格欄位清洗：排除預售資格與註冊說明等非票價內容"""
+        if not line:
+            return False
+
+        line = self.clean_text(line)
+        if not line:
+            return False
+
+        noise_keywords = [
+            '預售資格', '預售購票', '購票序號', '電子郵件', '登記', '會員預購',
+            'presale access', 'register now', 'registered users', 'registration',
+            '請先完成登記', '兌換資格券', '數量有限，換完為止'
+        ]
+
+        if any(keyword.lower() in line.lower() for keyword in noise_keywords):
+            return False
+
+        has_currency = bool(re.search(r'nt\$\s?[\d,]+|\$\s?[\d,]+|[\d,]+\s*元', line.lower()))
+        has_price_token = any(token in line.lower() for token in [
+            '票價', 'price', 'vip', 'vvip', 'ga', 'cat', '身障', '早鳥', '全票', '學生票'
+        ])
+
+        if has_currency:
+            return True
+
+        return has_price_token and len(line) <= 120
         
-    def extract_precise_location(self, lines, js_data=None):
+    def extract_precise_location(self, lines, js_data=None, url=None, title=None):
         """【暴力版】演出地點提取 - 擴大搜索範圍"""
         location_lines = []
         
@@ -477,12 +506,12 @@ class TixcraftPrecisionFieldScraper:
             if js_data.get('venue_info') and js_data['venue_info'].strip():
                 venue_info = self.clean_text(js_data['venue_info'])
                 simplified = self.simplify_location(venue_info)
-                if simplified != "未找到":
+                if simplified != "未找到" and self.is_valid_location_line(simplified):
                     return simplified
             if js_data.get('location') and js_data['location'].strip():
                 location = self.clean_text(js_data['location'])
                 simplified = self.simplify_location(location)
-                if simplified != "未找到":
+                if simplified != "未找到" and self.is_valid_location_line(simplified):
                     return simplified
         
         # 第二優先權：標準場館關鍵字
@@ -499,12 +528,12 @@ class TixcraftPrecisionFieldScraper:
                     location_part = line.split('注意事項')[0]
                     clean_location = self.clean_text(location_part)
                     simplified = self.simplify_location(clean_location)
-                    if simplified not in location_lines:
+                    if simplified not in location_lines and self.is_valid_location_line(simplified):
                         location_lines.append(simplified)
                 else:
                     clean_location = self.clean_text(line)
                     simplified = self.simplify_location(clean_location)
-                    if simplified not in location_lines:
+                    if simplified not in location_lines and self.is_valid_location_line(simplified):
                         location_lines.append(simplified)
         
         # 第三優先權：暴力搜索擴展關鍵字
@@ -525,7 +554,7 @@ class TixcraftPrecisionFieldScraper:
                 if any(keyword in line for keyword in location_keywords_extended):
                     clean_location = self.clean_text(line)
                     simplified = self.simplify_location(clean_location)
-                    if simplified and simplified not in location_lines:
+                    if simplified and simplified not in location_lines and self.is_valid_location_line(simplified):
                         location_lines.append(simplified)
         
         # JS 備援：主辦方地理線索
@@ -533,15 +562,36 @@ class TixcraftPrecisionFieldScraper:
             promoter = js_data['promoter']
             if any(venue in promoter for venue in ['台北', '高雄', '台中', '新北', '新竹', '台南']):
                 location_lines.append(self.clean_text(f"主辦方線索：{promoter}"))
+
+        # URL / 標題回退：處理頁面未標註場地但活動本身可判斷的情況
+        if not location_lines:
+            inferred_location = self.infer_location_from_context(url=url, title=title)
+            if inferred_location and self.is_valid_location_line(inferred_location):
+                location_lines.append(inferred_location)
         
         # 合併結果 - 【結構唯一化】
         if location_lines:
             # 過濾空殼和去重複
             location_lines = self.filter_empty_shells(location_lines)
             location_lines = self.remove_duplicate_lines(location_lines)
+            location_lines = [line for line in location_lines if self.is_valid_location_line(line)]
             return ' ; '.join(location_lines[:2])  # 最多顯示前2個地點資訊
         
         return "未找到"
+
+    def infer_location_from_context(self, url=None, title=None):
+        """以 URL / 標題做地點保底推斷，避免關鍵資訊缺漏。"""
+        normalized_url = (url or "").lower()
+        normalized_title = self.clean_text(title or "").lower()
+
+        # 大港開唱系列頁面常缺少明確「地點」欄位
+        if any(keyword in normalized_url for keyword in ["/26_megaport", "/26_megaport_c", "/26_megaport_d"]):
+            return "高雄駁二藝術特區"
+
+        if "大港開唱" in normalized_title or "megaport" in normalized_title:
+            return "高雄駁二藝術特區"
+
+        return None
     
     def simplify_location(self, location_text):
         """【精準地點版】地點資訊精煉 - 提取核心場館資訊"""
@@ -591,6 +641,37 @@ class TixcraftPrecisionFieldScraper:
                 return truncated
         
         return location_text
+
+    def is_valid_location_line(self, line):
+        """地點欄位清洗：保留場館/地標資訊，排除售票與規範雜訊"""
+        if not line:
+            return False
+
+        line = self.clean_text(line)
+        if not line or line == "未找到":
+            return False
+
+        lowered = line.lower()
+        noise_keywords = [
+            '購票序號', '預售資格', '預售購票', '電子郵件', '會員預購', '立即登記',
+            '退票', '手續費', '注意事項', '安檢', '驗包', '禁止攜帶', '直播',
+            'presale access', 'register now', 'registered users', 'via email', 'security check'
+        ]
+        if any(keyword.lower() in lowered for keyword in noise_keywords):
+            return False
+
+        venue_tokens = [
+            '地點', 'venue', '場地', '場館', '館', '中心', '體育場', '體育館',
+            'arena', 'hall', 'dome', 'legacy', 'zepp', 'sub live', '小巨蛋', '大巨蛋',
+            '駁二', '展覽館', '展覽中心', '音樂中心', '演藝廳', '劇院', 'ticc', 'att'
+        ]
+        has_venue_token = any(token.lower() in lowered for token in venue_tokens)
+
+        # 過長且沒有明確場館詞彙，多為敘事或規範內容
+        if len(line) > 90 and not has_venue_token:
+            return False
+
+        return has_venue_token or len(line) <= 30
         
     def extract_precise_sale_time(self, lines, js_data=None):
         """【多行累積版+唯一化】售票時間提取 - 強力黏著邏輯"""
@@ -602,7 +683,7 @@ class TixcraftPrecisionFieldScraper:
             for field in js_sale_fields:
                 if js_data.get(field) and js_data[field].strip():
                     sale_info = self.clean_text(js_data[field])
-                    if sale_info not in sale_time_lines:
+                    if sale_info not in sale_time_lines and self.is_valid_sale_time_line(sale_info):
                         sale_time_lines.append(sale_info)
         
         # 售票關鍵字（中英文混合，多樣化）
@@ -649,6 +730,7 @@ class TixcraftPrecisionFieldScraper:
         # 【結構唯一化】過濾空殼和重複檢查
         sale_time_lines = self.filter_empty_shells(sale_time_lines)
         sale_time_lines = self.remove_duplicate_lines(sale_time_lines)
+        sale_time_lines = [line for line in sale_time_lines if self.is_valid_sale_time_line(line)]
         
         # 去重複清洗：移除重複的前綴詞
         cleaned_lines = []
@@ -669,6 +751,40 @@ class TixcraftPrecisionFieldScraper:
             return ' ; '.join(cleaned_lines)
         
         return "未找到"
+
+    def is_valid_sale_time_line(self, line):
+        """售票時間欄位清洗：保留含日期/時間的售票節點，排除註冊與促銷說明"""
+        if not line:
+            return False
+
+        line = self.clean_text(line)
+        if not line or line == "未找到":
+            return False
+
+        lowered = line.lower()
+        noise_keywords = [
+            '預售資格限量發送中', '立即登記', '登記成功', '購票序號', '電子郵件',
+            '數量皆有限，售完為止', '不保證座位排號', 'vip upgrade', 'presale access registration',
+            'register now', 'registered users', 'via email'
+        ]
+        if any(keyword.lower() in lowered for keyword in noise_keywords):
+            return False
+
+        has_datetime = bool(re.search(
+            r'\d{4}[./-]\d{1,2}[./-]\d{1,2}|\d{1,2}[./-]\d{1,2}|\d{1,2}:\d{2}|\d{1,2}月\d{1,2}日',
+            line
+        ))
+        sale_tokens = [
+            '售票', '開賣', '預售', '會員預售', '正式開賣', '全面開賣',
+            'presale', 'on sale', 'sale time'
+        ]
+        has_sale_token = any(token.lower() in lowered for token in sale_tokens)
+
+        # 售票時間欄位以時間節點為主，純說明句不保留
+        if has_datetime and has_sale_token:
+            return True
+
+        return has_sale_token and len(line) <= 24
         
     def extract_precise_time_backup(self, lines):
         """演出時間備用提取 - 已整合至 event_info"""
@@ -792,7 +908,7 @@ class TixcraftPrecisionFieldScraper:
             event_info = self.extract_event_info(lines, js_data)  # 合併日期時間資訊 + JS數據
             
             # 修正地點提取，傳入 js_data
-            location = self.extract_precise_location(lines, js_data)
+            location = self.extract_precise_location(lines, js_data, url=url, title=final_title)
             price = self.extract_precise_price(lines)
             sale_time = self.extract_precise_sale_time(lines, js_data)  # 傳入 js_data 支援
             
