@@ -1,12 +1,12 @@
 {
-  "scrape_time": "2026-03-01 12:09:31",
-  "last_update": "2026-03-01 12:09:31",
+  "scrape_time": "2026-03-01 12:15:45",
+  "last_update": "2026-03-01 12:15:45",
   "total_events": 45,
-  "success_count": 44,
-  "success_rate": "97.8%",
+  "success_count": 45,
+  "success_rate": "100.0%",
   "extraction_method": "realtime_precision_field_extraction",
-  "current_progress": "66/100",
-  "current_session_success": 66,
+  "current_progress": "100/100",
+  "current_session_success": 100,
   "events": [
     {
       "index": 1,
@@ -119,10 +119,10 @@
     {
       "index": 13,
       "title": "丁噹",
-      "event_info": "未找到",
-      "location": "未找到",
-      "price": "未找到",
-      "sale_time": "未找到",
+      "event_info": "04.18 (六) 19：00 丨高雄巨蛋 ; 11.29 (六) 12：00 丨拓元售票 全面開賣",
+      "location": "睽違十年重返高雄巨蛋 夜遊狂歡無限放大 ; 04.18 (六) 19：00 丨高雄巨蛋",
+      "price": "我愛你 雙人套票區6000元/2",
+      "sale_time": "11.29 (六) 12：00 丨拓元售票 全面開賣",
       "url": "https://tixcraft.com/activity/detail/26_della"
     },
     {
