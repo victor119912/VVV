@@ -1,49 +1,45 @@
-# Tixcraft 爬蟲程式
+# Tixcraft 爬蟲專案
 
-這是一個用於 Tixcraft 售票網站的自動化爬蟲程式。
+本專案已精簡為核心版本，保留主力爬蟲與監控工具。
 
-## 功能特色
+## 快速開始
 
-- 自動下載並管理 ChromeDriver
-- 隱藏瀏覽器自動化控制提示
-- 自動檢查時間，在指定時間（12:00:00）重新整理頁面
-- 自動尋找並點擊「立即購票」按鈕
-
-## 安裝需求
-
-請確保您的電腦已安裝 Python 3.6 或更高版本。
-
-### 安裝依賴套件
-
-在命令提示字元或 PowerShell 中執行：
+1. 建立並啟用虛擬環境（建議）
+2. 安裝套件
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 使用方法
-
-在命令提示字元或 PowerShell 中執行：
+3. 使用統一入口執行（預設：`precision-field`）
 
 ```bash
-python tixcraft_crawler.py
+python run_scraper.py
 ```
 
-## 程式說明
+4. 查看所有可用目標
 
-### 主要函數
+```bash
+python run_scraper.py --list
+```
 
-1. `setup_chrome_driver()` - 設定 Chrome 瀏覽器參數
-2. `check_time_and_refresh(driver)` - 檢查時間並在 12:00:00 時重新整理頁面
-3. `find_and_click_buy_button(driver)` - 尋找並點擊購票按鈕
+## 可用目標
 
-### 注意事項
+- `precision-field`：目前最適合作為日常執行版本
+- `monitor`：資料監控用途
 
-- 程式會自動前往指定的 Tixcraft 活動頁面
-- 每秒檢查一次是否有購票按鈕出現
-- 在 12:00:00 時會自動重新整理頁面
-- 按 Ctrl+C 可以中斷程式執行
+## 主要檔案
+
+- `run_scraper.py`：統一啟動入口
+- `tixcraft_precision_field_scraper.py`：建議主版本
+- `tixcraft_monitor.py`：監控工具
+- `README_爬蟲使用說明.md`：欄位爬取細節說明
+
+## 輸出與暫存
+
+- `tixcraft_activities.json`：主要資料檔
+- `.gitignore` 已加入常見快取、虛擬環境、暫存檔忽略規則
 
 ## 免責聲明
 
-此程式僅供學習和研究目的使用。使用者需要遵守網站的使用條款和相關法律規定。
+本專案僅供學習與研究用途，請務必遵守目標網站服務條款與相關法規。
