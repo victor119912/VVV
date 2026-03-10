@@ -1,0 +1,83 @@
+{
+  "scrape_time": "2026-03-10 15:26:23",
+  "total_events": 10,
+  "fields": [
+    "event_name",
+    "ticket_price",
+    "ticket_types",
+    "event_time",
+    "sale_time",
+    "event_link",
+    "venue_name",
+    "address",
+    "artist_name"
+  ],
+  "events": [
+    {
+      "event_name": "公館青少年 GGteens 2026 年度專場【青少年之後】",
+      "event_link": "https://tixcraft.com/activity/detail/26_ggteens",
+      "artist_name": "公館青少年"
+    },
+    {
+      "event_name": "FUJI ROCK FESTIVAL’26",
+      "event_link": "https://tixcraft.com/activity/detail/26_fujirock",
+      "event_time": "2026/07/24(五), 07/25(六), 07/26(日)",
+      "sale_time": "2026/02/20(五) 11:00~2026/05/15(五) 22:00 / 2026/05/16(六) ~",
+      "address": "新潟縣苗場滑雪場（新潟湯澤町）"
+    },
+    {
+      "event_name": "Michael Learns to Rock Encore All The Hits Taiwan",
+      "event_link": "https://tixcraft.com/activity/detail/26_mltr",
+      "event_time": "2026/07/05（日）19:00 (實際演出以現場為準)",
+      "sale_time": "⁠⁠ 預 售：2026/01/12（一）10:00-22:00 / ⁠ 全面開賣：2026/01/13（二）10:00 / 【預售資格限量發送中】 / 立即登記，在正式開賣前搶先取得購票機會",
+      "venue_name": "高雄流行音樂中心海音館",
+      "artist_name": "Michael Learns to Rock"
+    },
+    {
+      "event_name": "KAZUYA KAMENASHI “TALK TO ME” ASIA TOUR 2026 IN KAOHSIUNG",
+      "event_link": "https://tixcraft.com/activity/detail/26_kamenashi",
+      "artist_name": "龜梨和也"
+    },
+    {
+      "event_name": "BUS THE 1ST ASIA FANCON TOUR：THE FIRST LIGHT IN TAIPEI",
+      "event_link": "https://tixcraft.com/activity/detail/26_bus",
+      "ticket_price": "NT$5,880 /4,880 / 3,880 / 2,880 / 1,880 / 1,440（身障優待票） / VIP1 Package NT$ 5,880",
+      "ticket_types": "VIP1 Package",
+      "venue_name": "Zepp New Taipei（新莊宏匯廣場8F）",
+      "artist_name": "BUS"
+    },
+    {
+      "event_name": "【Mastercard專區】BUS THE 1ST ASIA FANCON TOUR：THE FIRST LIGHT IN TAIPEI",
+      "event_link": "https://tixcraft.com/activity/detail/26_bus_c",
+      "ticket_price": "NT$5,880 /4,880 / 3,880 / 2,880 / 1,880 / 1,440（身障優待票） / VIP1 Package NT$ 5,880 / NT$5,880 /4,880 / 3,880 / 2,880 / 1,880 / 1,440 (accessibility tickets)",
+      "ticket_types": "VIP1 Package",
+      "event_time": "2026/ 05/ 28（THUR）19:00",
+      "venue_name": "Zepp New Taipei（新莊宏匯廣場8F）",
+      "artist_name": "BUS"
+    },
+    {
+      "event_name": "【Mastercard專區】Anson Seabra：The I Must Be Dreaming Tour",
+      "event_link": "https://tixcraft.com/activity/detail/26_anson_c",
+      "artist_name": "Anson Seabra"
+    },
+    {
+      "event_name": "Anson Seabra：The I Must Be Dreaming Tour",
+      "event_link": "https://tixcraft.com/activity/detail/26_anson",
+      "artist_name": "Anson Seabra"
+    },
+    {
+      "event_name": "【VIP Upgrade/升級VIP】Anson Seabra：The I Must Be Dreaming Tour",
+      "event_link": "https://tixcraft.com/activity/detail/26_anson_v",
+      "artist_name": "Anson Seabra"
+    },
+    {
+      "event_name": "2026 WOODZ WORLD TOUR ’Archive. 1’ IN TAIPEI",
+      "event_link": "https://tixcraft.com/activity/detail/26_woodz",
+      "ticket_price": "NT. 4,880 /4,680 /4,280 /3,880 /身障席 NT. 2400",
+      "event_time": "2026/05/23(六) 7:30PM / 2026/05/24(日) 6:00PM",
+      "sale_time": "2026/03/14(六) 12PM",
+      "venue_name": "ZEPP NEW TAIPEI",
+      "artist_name": "WOODZ"
+    }
+  ]
+}
