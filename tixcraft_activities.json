@@ -1,5 +1,5 @@
 {
-  "scrape_time": "2026-03-10 16:20:57",
+  "scrape_time": "2026-03-10 16:30:19",
   "total_events": 45,
   "fields": [
     "event_name",
@@ -277,15 +277,13 @@
       "event_name": "2026大港開唱X國泰世華銀行【國泰世華大樹套票】",
       "event_link": "https://tixcraft.com/activity/detail/26_megaport_c",
       "ticket_price": "NT$4,200",
-      "ticket_types": "購買【大樹雙日聯票】1張",
-      "artist_name": "大港開唱"
+      "ticket_types": "購買【大樹雙日聯票】1張"
     },
     {
       "event_name": "2026大港開唱X國泰世華銀行【身心障礙票券】",
       "event_link": "https://tixcraft.com/activity/detail/26_megaport_d",
       "ticket_price": "NT$4,200 / NT$4,200 / NT$4,800 / NT$4,400 / NT$5,000 / NT$3,000 / NT$2,200 / NT$1,500 / NT$5,900",
-      "ticket_types": "➽ 雙日聯票 / #國泰世華大樹套票 / ➽ 船鳴套票 / ➽ 單日票 ​ ​ ​ / ​ #KKday船鳴套票+台北至高雄單程客運",
-      "artist_name": "大港開唱"
+      "ticket_types": "➽ 雙日聯票 / #國泰世華大樹套票 / ➽ 船鳴套票 / ➽ 單日票 ​ ​ ​ / ​ #KKday船鳴套票+台北至高雄單程客運"
     },
     {
       "event_name": "2026大港開唱X國泰世華銀行",
@@ -336,8 +334,7 @@
       "ticket_types": "🍗法大炸雞雙人Chill席🍴 特價",
       "sale_time": "★單場票全面開賣 2026年2月13日（五）17:00起",
       "venue_name": "新竹縣體育館",
-      "address": "地點:新竹縣體育館",
-      "artist_name": "籃球"
+      "address": "地點:新竹縣體育館"
     },
     {
       "event_name": "【VIP Upgrade/升級VIP】Central Cee – CAN’T RUSH GREATNESS WORLD TOUR – Asia 2026",
@@ -372,8 +369,7 @@
       "event_name": "2026北海道日本火腿鬥士隊例行賽入場券",
       "event_link": "https://tixcraft.com/activity/detail/26_hnf",
       "sale_time": "2026/2/1 (日) 13:00~",
-      "venue_name": "ES CON FIELD HOKKAIDO",
-      "artist_name": "棒球"
+      "venue_name": "ES CON FIELD HOKKAIDO"
     },
     {
       "event_name": "ONEREPUBLIC “From Asia， With Love” 2026 in Taipei",
@@ -397,8 +393,7 @@
     },
     {
       "event_name": "2026福岡軟銀鷹例行賽門票",
-      "event_link": "https://tixcraft.com/activity/detail/26_softbankh",
-      "artist_name": "福岡軟銀鷹"
+      "event_link": "https://tixcraft.com/activity/detail/26_softbankh"
     },
     {
       "event_name": "白安 ANN《路邊野餐 Summer Tryst》2026 New Album Live Tour",
