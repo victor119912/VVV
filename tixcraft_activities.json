@@ -1,5 +1,5 @@
 {
-  "scrape_time": "2026-03-10 16:30:19",
+  "scrape_time": "2026-03-10 16:53:34",
   "total_events": 45,
   "fields": [
     "event_name",
@@ -118,8 +118,7 @@
       "ticket_price": "NT$4,800 / NT$3,800 / NT$2,400 / NT$4,800 / NT$3,800 / NT$2,400",
       "ticket_types": "VVIP / VIP / 身障席 / ・VVIP / ・VIP / ・身障者席",
       "sale_time": "登記傳送門👉https://zutomayo.net/intense2_apply_pre_taipei_2 會員抽選結果:2/5 (四）18:00 / 2/7（六）12:00 ~ 2/8（日）12:00 / 2/8（日）15:00",
-      "address": "🎸演出地點:新北市工商展覽中心（新北市五股區五權路1號）",
-      "artist_name": "ZUTOMAYO"
+      "address": "🎸演出地點:新北市工商展覽中心（新北市五股區五權路1號）"
     },
     {
       "event_name": "Laufey: A Matter of Time Tour in Taipei",
@@ -160,16 +159,14 @@
       "event_link": "https://tixcraft.com/activity/detail/26_cxm_d",
       "ticket_price": "NT$3,440 / NT$1,940",
       "ticket_types": "一般身障票 / 輪椅身障票",
-      "sale_time": "2026/2/7 (六) 12 PM (Local Time) / 2026/2/1 (日) 12 PM (Local Time)",
-      "artist_name": "CxM"
+      "sale_time": "2026/2/7 (六) 12 PM (Local Time) / 2026/2/1 (日) 12 PM (Local Time)"
     },
     {
       "event_name": "CxM [DOUBLE UP] LIVE PARTY in KAOHSIUNG",
       "event_link": "https://tixcraft.com/activity/detail/26_cxm",
       "ticket_price": "NT$3,440 / NT$1,940",
       "ticket_types": "一般身障票 / 輪椅身障票",
-      "sale_time": "2026/2/7 (六) 12 PM (Local Time) / ❋ 4/25、4/26兩日退票票券，將於4/24加場販售時間同步釋出 / 2026/1/31 (六) 12 PM (Local Time) - 2026/1/31 (六) 11:59 PM (Local Time) / 2026/2/1 (日) 12 PM (Local Time) / 演唱會開賣前幾日，務必完成拓元售票的會員註冊與認證，且務必「確認」會員相關資料是否正確及完整，有空格及缺字將影響您的入場，如有疑問請提早寄信聯繫拓元客服，請注意，切勿使用暱稱或他人資料。 每人/每帳號/每場限購1張門票(例: 若您在已經購買 4/25的1張票券，您還是能購買4/26的票券1張。)",
-      "artist_name": "CxM"
+      "sale_time": "2026/2/7 (六) 12 PM (Local Time) / ❋ 4/25、4/26兩日退票票券，將於4/24加場販售時間同步釋出 / 2026/1/31 (六) 12 PM (Local Time) - 2026/1/31 (六) 11:59 PM (Local Time) / 2026/2/1 (日) 12 PM (Local Time) / 演唱會開賣前幾日，務必完成拓元售票的會員註冊與認證，且務必「確認」會員相關資料是否正確及完整，有空格及缺字將影響您的入場，如有疑問請提早寄信聯繫拓元客服，請注意，切勿使用暱稱或他人資料。 每人/每帳號/每場限購1張門票(例: 若您在已經購買 4/25的1張票券，您還是能購買4/26的票券1張。)"
     },
     {
       "event_name": "amazarashi ASIA TOUR 2026 in TAIPEI",
@@ -204,8 +201,7 @@
       "event_time": "2026/04/11 14:00",
       "sale_time": "2026.03.14（六）12:00正式啟售",
       "venue_name": "Zepp New Taipei （新北市新莊區新北大道四段3號8樓）",
-      "address": "活動地點:Zepp New Taipei （新北市新莊區新北大道四段3號8樓）",
-      "artist_name": "春樂祭"
+      "address": "活動地點:Zepp New Taipei （新北市新莊區新北大道四段3號8樓）"
     },
     {
       "event_name": "永豐金控:銀行冠名贊助《G.E.M.鄧紫棋 I AM GLORIA 世界巡迴演唱會 2.0 － 台北站》",
@@ -378,8 +374,7 @@
       "ticket_types": "NTD.",
       "event_time": "2026/03/04（三）20:00 / 2025/10/03 (五) 12:00 / 2025/10/03 (五) 12:00 ~ 2025/10/06 (一) 12:00",
       "sale_time": "OneRepublic官方預售 2025/09/29 (一) 12:00 ~ 23:59 / 星展萬事達卡卡友預售票(僅限星展萬事達卡信用卡與簽帳金融卡付款) 2025/09/30 (二) 10:00 ~ 2025/10/02 (四) 10:00 / Live Nation Taiwan會員預售 2025/10/02 (四) 12:00 ~ 23:59 / 正式開賣 2025/10/03 (五) 12:00全面開賣",
-      "venue_name": "台北小巨蛋 (Taipei Arena)",
-      "artist_name": "OneRepublic"
+      "venue_name": "台北小巨蛋 (Taipei Arena)"
     },
     {
       "event_name": "【Mastercard專區】ONEREPUBLIC “From Asia， With Love” 2026 in Taipei",
@@ -388,8 +383,7 @@
       "ticket_types": "NTD.",
       "event_time": "2026/03/04（三）20:00 / 2026/03/04 (WED) 20:00 / 2025/10/03 (五) 12:00",
       "sale_time": "星展萬事達卡卡友預售票(僅限星展萬事達卡信用卡與簽帳金融卡付款) 2025/09/30 (二) 10:00 ~ 2025/10/02 (四) 10:00 / DBS Mastercard Presale(Only paid by DBS Mastercard credit card and debit card) 2025/09/30 (TUE) 10:00 ~ 2025/10/02 (THU) 10:00 / DBS Travel World Elite/ World Business Mastercard Preferred Tickets 2025/10/03 (FRI) 12:00 PM",
-      "venue_name": "台北小巨蛋 (Taipei Arena)",
-      "artist_name": "OneRepublic"
+      "venue_name": "台北小巨蛋 (Taipei Arena)"
     },
     {
       "event_name": "2026福岡軟銀鷹例行賽門票",

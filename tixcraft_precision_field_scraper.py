@@ -44,6 +44,9 @@ GENERIC_ARTIST_KEYWORDS = (
     "嘉年华",
     "開唱",
     "开唱",
+    "樂祭",
+    "乐祭",
+    "祭",
 )
 GENERIC_ARTIST_TITLE_KEYWORDS = (
     "主場賽事",
@@ -59,6 +62,66 @@ GENERIC_ARTIST_TITLE_KEYWORDS = (
     "票务",
     "聯票",
     "联票",
+    "限定",
+    "聯名",
+    "联名",
+    "銀行",
+    "银行",
+    "專區",
+    "专区",
+)
+ARTIST_EVENT_KEYWORDS = (
+    "年度專場",
+    "專場",
+    "专场",
+    "演唱會",
+    "演唱会",
+    "巡迴",
+    "巡回",
+    "見面會",
+    "见面会",
+    "音樂會",
+    "音乐会",
+    "fancon",
+    "fan meeting",
+    "world tour",
+    "asia tour",
+    "tour",
+    "concert",
+    "live",
+    "showcase",
+    "encore",
+)
+EXPLICIT_ARTIST_LABELS = (
+    "藝人",
+    "艺人",
+    "藝人名稱",
+    "艺人名称",
+    "演出藝人",
+    "演出艺人",
+    "演出者",
+    "出演",
+    "演出單位",
+    "演出单位",
+    "表演嘉賓",
+    "表演嘉宾",
+    "artist",
+    "artists",
+    "lineup",
+    "performer",
+    "performers",
+)
+TITLE_BRAND_MARKERS = (
+    " x ",
+    " × ",
+    "合作",
+    "限定",
+    "聯名",
+    "联名",
+    "銀行",
+    "银行",
+    "presented by",
+    "sponsored by",
 )
 SPORT_CATEGORY_KEYWORDS = (
     "sports",
@@ -273,6 +336,101 @@ class TixcraftPrecisionFieldScraper:
     def _is_sports_category(self, *values: str | None) -> bool:
         lowered_values = [self._clean_text(value).lower() for value in values if value]
         return any(any(keyword in value for keyword in SPORT_CATEGORY_KEYWORDS) for value in lowered_values)
+
+    def _contains_artist_event_keyword(self, text: str) -> bool:
+        lowered = self._clean_text(text).lower()
+        return any(keyword in lowered for keyword in ARTIST_EVENT_KEYWORDS)
+
+    def _strip_event_title_prefixes(self, title: str) -> str:
+        cleaned = self._clean_text(title)
+        cleaned = re.sub(r"^【[^】]+】\s*", "", cleaned)
+        cleaned = re.sub(r"^\d{4}(?:-\d{2})?\s*", "", cleaned)
+        return cleaned.strip()
+
+    def _contains_brand_marker(self, text: str) -> bool:
+        lowered = self._clean_text(text).lower()
+        compact = self._compact(text).lower()
+        return (
+            any(marker in lowered for marker in TITLE_BRAND_MARKERS)
+            or bool(re.search(r"[\u4e00-\u9fffA-Za-z0-9][x×][\u4e00-\u9fffA-Za-z0-9]", self._clean_text(text)))
+            or any(
+            keyword in compact for keyword in GENERIC_ARTIST_TITLE_KEYWORDS
+        )
+        )
+
+    def _clean_artist_candidate(self, value: str | None) -> str | None:
+        cleaned = self._normalize_value(value)
+        if not cleaned:
+            return None
+        cleaned = re.sub(r"^【[^】]+】\s*", "", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip(" -:/")
+        if not cleaned:
+            return None
+        return cleaned
+
+    def _looks_like_valid_artist_candidate(
+        self,
+        candidate: str | None,
+        event_name: str,
+        category_values: set[str],
+        require_title_support: bool,
+    ) -> bool:
+        cleaned = self._clean_artist_candidate(candidate)
+        if not cleaned:
+            return False
+
+        lowered = cleaned.lower()
+        if len(cleaned) < 2 or len(cleaned) > 40:
+            return False
+        if lowered in category_values:
+            return False
+        if DATE_RE.search(cleaned) or TIME_RE.search(cleaned) or PRICE_RE.search(cleaned):
+            return False
+        if self._contains_generic_artist_keyword(cleaned) or self._contains_generic_artist_title_keyword(cleaned):
+            return False
+        if self._contains_brand_marker(cleaned):
+            return False
+
+        if not require_title_support:
+            return True
+
+        normalized_title = self._strip_event_title_prefixes(event_name)
+        normalized_title_lower = normalized_title.lower()
+        prefix_markers = (" ", ":", "：", "-", "–", "—", "「", "『", "(", "（", "/", "|")
+
+        if normalized_title_lower == lowered:
+            return True
+        if any(normalized_title_lower.startswith(f"{lowered}{marker}") for marker in prefix_markers):
+            return not self._contains_brand_marker(normalized_title)
+        if self._contains_brand_marker(normalized_title) and not self._contains_artist_event_keyword(normalized_title):
+            return False
+
+        if lowered in normalized_title_lower:
+            suffix = normalized_title_lower.split(lowered, 1)[1].strip(" :-:：")
+            if suffix and self._contains_artist_event_keyword(suffix):
+                return True
+            if suffix and not self._contains_brand_marker(suffix) and not self._contains_generic_artist_keyword(suffix):
+                return len(suffix) <= 30
+
+        return self._contains_artist_event_keyword(normalized_title) and not self._contains_brand_marker(normalized_title)
+
+    def _extract_explicit_artist_name(self, intro_lines: list[str], event_name: str, category_values: set[str]) -> str | None:
+        candidates: list[str] = []
+        explicit_labels = {self._compact(item).lower() for item in EXPLICIT_ARTIST_LABELS}
+        for line in intro_lines:
+            stripped = self._strip_bullet_prefix(line)
+            if ":" not in stripped:
+                continue
+            raw_label, raw_content = stripped.split(":", 1)
+            label = self._compact(raw_label).lower()
+            if label not in explicit_labels:
+                continue
+            candidate = self._clean_artist_candidate(raw_content)
+            if self._looks_like_valid_artist_candidate(candidate, event_name, category_values, require_title_support=False):
+                candidates.append(candidate)
+
+        deduped = self._dedupe(candidates)
+        return " / ".join(deduped) if deduped else None
 
     def _compact(self, text: str) -> str:
         return re.sub(r"\s+", "", self._clean_text(text))
@@ -829,58 +987,40 @@ class TixcraftPrecisionFieldScraper:
 
         return "Unknown Event"
 
-    def _guess_artist_from_title(self, event_name: str) -> str | None:
-        working = self._clean_text(event_name)
+    def _guess_artist_from_title(self, event_name: str, category_values: set[str]) -> str | None:
+        working = self._strip_event_title_prefixes(event_name)
         if not working:
             return None
 
-        lowered = working.lower()
         if self._contains_generic_artist_keyword(working) or self._contains_generic_artist_title_keyword(working):
             return None
+        if not self._contains_artist_event_keyword(working):
+            return None
 
-        working = re.sub(r"^【[^】]+】\s*", "", working)
-        working = re.sub(r"^\d{4}\s+", "", working)
-
-        if "“" in working or '"' in working or "‘" in working or "'" in working:
-            quoted_split = re.split(r"[“\"'‘’]", working, maxsplit=1)
-            candidate = self._normalize_value(quoted_split[0]) if quoted_split else None
-            if candidate and len(candidate) <= 40:
-                return candidate
-
-        year_split = re.split(r"\b20\d{2}\b", working, maxsplit=1)
-        if len(year_split) > 1:
-            candidate = self._normalize_value(year_split[0])
-            if candidate and len(candidate) <= 40 and not any(keyword in candidate.lower() for keyword in GENERIC_ARTIST_KEYWORDS):
-                return candidate
-
-        keyword_pattern = re.compile(
-            r"(年度專場|專場|演唱會|巡迴|見面會|音樂會|FANCON|FAN MEETING|WORLD TOUR|ASIA TOUR|TOUR|CONCERT|LIVE|SHOWCASE|ENCORE)",
+        candidate: str | None = None
+        match = re.search(
+            r"(年度專場|專場|专场|演唱會|演唱会|巡迴|巡回|見面會|见面会|音樂會|音乐会|FANCON|FAN MEETING|WORLD TOUR|ASIA TOUR|TOUR|CONCERT|LIVE|SHOWCASE|ENCORE)",
+            working,
             flags=re.IGNORECASE,
         )
-        match = keyword_pattern.search(working)
         if match:
-            candidate = self._normalize_value(working[: match.start()])
-            if candidate and len(candidate) <= 40:
-                return candidate
+            candidate = self._clean_artist_candidate(working[: match.start()])
 
-        if "：" in working:
-            candidate = self._normalize_value(working.split("：", 1)[0])
-            if candidate and len(candidate) <= 40:
-                return candidate
+        if not candidate and ("：" in working or ":" in working):
+            separator = "：" if "：" in working else ":"
+            candidate = self._clean_artist_candidate(working.split(separator, 1)[0])
 
-        if ":" in working:
-            candidate = self._normalize_value(working.split(":", 1)[0])
-            if candidate and len(candidate) <= 40:
-                return candidate
+        if not candidate and re.search(r"\b20\d{2}\b", working):
+            candidate = self._clean_artist_candidate(re.split(r"\b20\d{2}\b", working, maxsplit=1)[0])
 
-        if len(working) <= 30:
-            return working
-
+        if self._looks_like_valid_artist_candidate(candidate, event_name, category_values, require_title_support=True):
+            return candidate
         return None
 
-    def _extract_artist_name(self, payload: dict[str, Any], event_name: str) -> str | None:
+    def _extract_artist_name(self, payload: dict[str, Any], event_name: str, intro_lines: list[str]) -> str | None:
         data_layer = payload.get("dataLayer") or {}
         artist_name = self._normalize_value(data_layer.get("artistName"))
+        artist_name_en = self._normalize_value(data_layer.get("artistNameEn"))
         child_category = self._normalize_value(data_layer.get("childCategoryName"))
         child_category_en = self._normalize_value(data_layer.get("childCategoryNameEn"))
         parent_category = self._normalize_value(data_layer.get("parentCategoryName"))
@@ -889,18 +1029,21 @@ class TixcraftPrecisionFieldScraper:
         if self._is_sports_category(child_category, child_category_en, parent_category, parent_category_en):
             return None
 
-        if artist_name:
-            lowered = artist_name.lower()
-            category_values = {value.lower() for value in (child_category, child_category_en, parent_category, parent_category_en) if value}
-            if lowered in category_values:
-                return None
-            if not self._contains_generic_artist_keyword(artist_name):
-                if self._contains_generic_artist_title_keyword(event_name):
-                    return None
-                if "festival" in event_name.lower() and lowered in event_name.lower():
-                    return None
-                return artist_name
-        return self._guess_artist_from_title(event_name)
+        category_values = {
+            value.lower()
+            for value in (child_category, child_category_en, parent_category, parent_category_en)
+            if value
+        }
+
+        explicit_artist = self._extract_explicit_artist_name(intro_lines, event_name, category_values)
+        if explicit_artist:
+            return explicit_artist
+
+        for candidate in (artist_name, artist_name_en):
+            if self._looks_like_valid_artist_candidate(candidate, event_name, category_values, require_title_support=True):
+                return self._clean_artist_candidate(candidate)
+
+        return self._guess_artist_from_title(event_name, category_values)
 
     def _build_event_record(self, url: str, payload: dict[str, Any]) -> dict[str, Any]:
         intro_lines = self._split_intro_lines(payload.get("intro", ""))
@@ -911,7 +1054,7 @@ class TixcraftPrecisionFieldScraper:
         event_time = self._format_event_time(sections["event_time"])
         sale_time = self._format_sale_time(sections["sale_time"])
         venue_name, address = self._extract_location(sections, intro_lines)
-        artist_name = self._extract_artist_name(payload, event_name)
+        artist_name = self._extract_artist_name(payload, event_name, intro_lines)
 
         record: dict[str, Any] = {
             "event_name": event_name,
