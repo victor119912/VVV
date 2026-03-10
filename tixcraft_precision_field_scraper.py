@@ -36,7 +36,47 @@ ADDRESS_RE = re.compile(
     r"|[^\n]{1,12}町"
     r")"
 )
-GENERIC_ARTIST_KEYWORDS = ("festival", "音樂節", "音乐节", "嘉年華", "嘉年华")
+GENERIC_ARTIST_KEYWORDS = (
+    "festival",
+    "音樂節",
+    "音乐节",
+    "嘉年華",
+    "嘉年华",
+    "開唱",
+    "开唱",
+)
+GENERIC_ARTIST_TITLE_KEYWORDS = (
+    "主場賽事",
+    "主场赛事",
+    "季套票",
+    "套票專區",
+    "套票专区",
+    "門票",
+    "门票",
+    "售票",
+    "票券",
+    "票務",
+    "票务",
+    "聯票",
+    "联票",
+)
+SPORT_CATEGORY_KEYWORDS = (
+    "sports",
+    "sport",
+    "籃球",
+    "篮球",
+    "棒球",
+    "足球",
+    "排球",
+    "網球",
+    "网球",
+    "羽球",
+    "羽毛球",
+    "電競",
+    "电竞",
+    "賽車",
+    "赛车",
+)
 VENUE_KEYWORDS = (
     "arena",
     "hall",
@@ -221,6 +261,18 @@ class TixcraftPrecisionFieldScraper:
         if cleaned.lower() in PLACEHOLDERS:
             return None
         return cleaned
+
+    def _contains_generic_artist_keyword(self, text: str) -> bool:
+        lowered = self._clean_text(text).lower()
+        return any(keyword in lowered for keyword in GENERIC_ARTIST_KEYWORDS)
+
+    def _contains_generic_artist_title_keyword(self, text: str) -> bool:
+        lowered = self._clean_text(text).lower()
+        return any(keyword in lowered for keyword in GENERIC_ARTIST_TITLE_KEYWORDS)
+
+    def _is_sports_category(self, *values: str | None) -> bool:
+        lowered_values = [self._clean_text(value).lower() for value in values if value]
+        return any(any(keyword in value for keyword in SPORT_CATEGORY_KEYWORDS) for value in lowered_values)
 
     def _compact(self, text: str) -> str:
         return re.sub(r"\s+", "", self._clean_text(text))
@@ -783,7 +835,7 @@ class TixcraftPrecisionFieldScraper:
             return None
 
         lowered = working.lower()
-        if any(keyword in lowered for keyword in GENERIC_ARTIST_KEYWORDS):
+        if self._contains_generic_artist_keyword(working) or self._contains_generic_artist_title_keyword(working):
             return None
 
         working = re.sub(r"^【[^】]+】\s*", "", working)
@@ -829,9 +881,22 @@ class TixcraftPrecisionFieldScraper:
     def _extract_artist_name(self, payload: dict[str, Any], event_name: str) -> str | None:
         data_layer = payload.get("dataLayer") or {}
         artist_name = self._normalize_value(data_layer.get("artistName"))
+        child_category = self._normalize_value(data_layer.get("childCategoryName"))
+        child_category_en = self._normalize_value(data_layer.get("childCategoryNameEn"))
+        parent_category = self._normalize_value(data_layer.get("parentCategoryName"))
+        parent_category_en = self._normalize_value(data_layer.get("parentCategoryNameEn"))
+
+        if self._is_sports_category(child_category, child_category_en, parent_category, parent_category_en):
+            return None
+
         if artist_name:
             lowered = artist_name.lower()
-            if not any(keyword in lowered for keyword in GENERIC_ARTIST_KEYWORDS):
+            category_values = {value.lower() for value in (child_category, child_category_en, parent_category, parent_category_en) if value}
+            if lowered in category_values:
+                return None
+            if not self._contains_generic_artist_keyword(artist_name):
+                if self._contains_generic_artist_title_keyword(event_name):
+                    return None
                 if "festival" in event_name.lower() and lowered in event_name.lower():
                     return None
                 return artist_name
