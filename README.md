@@ -1,45 +1,62 @@
-# Tixcraft 爬蟲專案
+# Tixcraft Scraper
 
-本專案已精簡為核心版本，保留主力爬蟲與監控工具。
+這個專案目前只保留「抓取 Tixcraft 活動資料」會用到的檔案。
 
-## 快速開始
+## 保留的檔案
 
-1. 建立並啟用虛擬環境（建議）
-2. 安裝套件
+- `run_scraper.py`
+  - 入口指令，負責接收參數並執行爬蟲。
+- `tixcraft_precision_field_scraper.py`
+  - 主爬蟲邏輯，只輸出需要的欄位。
+- `requirements.txt`
+  - 執行所需套件。
+- `tixcraft_activities.json`
+  - 目前主輸出檔。
+- `.gitignore`
+  - 忽略 log、快取和臨時輸出。
+
+## 安裝
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. 使用統一入口執行（預設：`precision-field`）
+## 執行
+
+抓完整活動列表：
 
 ```bash
 python run_scraper.py
 ```
 
-4. 查看所有可用目標
+只抓前 10 筆：
 
 ```bash
-python run_scraper.py --list
+python run_scraper.py --limit 10
 ```
 
-## 可用目標
+指定輸出檔：
 
-- `precision-field`：目前最適合作為日常執行版本
-- `monitor`：資料監控用途
+```bash
+python run_scraper.py --output custom_output.json
+```
 
-## 主要檔案
+顯示瀏覽器視窗執行：
 
-- `run_scraper.py`：統一啟動入口
-- `tixcraft_precision_field_scraper.py`：建議主版本
-- `tixcraft_monitor.py`：監控工具
-- `README_爬蟲使用說明.md`：欄位爬取細節說明
+```bash
+python run_scraper.py --visible
+```
 
-## 輸出與暫存
+## 輸出欄位
 
-- `tixcraft_activities.json`：主要資料檔
-- `.gitignore` 已加入常見快取、虛擬環境、暫存檔忽略規則
+每筆活動只會保留以下欄位，有資料才會寫入：
 
-## 免責聲明
-
-本專案僅供學習與研究用途，請務必遵守目標網站服務條款與相關法規。
+- `event_name`
+- `ticket_price`
+- `ticket_types`
+- `event_time`
+- `sale_time`
+- `event_link`
+- `venue_name`
+- `address`
+- `artist_name`

@@ -23,3 +23,7 @@ env/
 # Temporary outputs
 test_tixcraft_activities.json
 test_output.json
+tixcraft_sample_*.json
+tixcraft_activities_corrected_preview.json
+validation_report*.json
+validation_report*.md
