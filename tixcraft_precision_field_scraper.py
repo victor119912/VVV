@@ -196,6 +196,106 @@ class TixcraftPrecisionFieldScraper:
         text = re.sub(r'\s+', ' ', text).strip()
         
         return text
+
+    def normalize_output(self, value):
+        if not value:
+            return None
+        normalized = value.strip()
+        if not normalized or normalized in {"?芣??", "?航炊"}:
+            return None
+        return normalized
+
+    def add_field_if_present(self, result, key, value):
+        normalized = self.normalize_output(value)
+        if normalized:
+            result[key] = normalized
+
+    def get_js_field(self, js_data, keys):
+        if not js_data:
+            return None
+        for key in keys:
+            value = js_data.get(key)
+            normalized = self.normalize_output(value)
+            if normalized:
+                return normalized
+        return None
+
+    def extract_ticket_types(self, lines, js_data=None):
+        types = []
+        type_keywords = ['票種', '票別', '類別', '區', 'section', 'zone', 'class']
+        for line in (lines or []):
+            if any(keyword.lower() in line.lower() for keyword in type_keywords):
+                cleaned = self.clean_text(line)
+                if cleaned and cleaned not in types:
+                    types.append(cleaned)
+        if js_data:
+            js_type = self.get_js_field(js_data, ['ticketType', 'category'])
+            if js_type and js_type not in types:
+                types.insert(0, js_type)
+        return types and ' ; '.join(types[:3]) or None
+
+    def extract_event_time(self, lines, js_data=None):
+        js_time = self.get_js_field(js_data, ['event_time', 'eventTime', 'performanceTime', 'date'])
+        if js_time:
+            return js_time
+        date_patterns = [
+            r'\d{4}[./-]\d{1,2}[./-]\d{1,2}',
+            r'\d{1,2}[./-]\d{1,2}[./-]\d{4}',
+            r'\d{1,2}[./-]\d{1,2}',
+            r'\d{1,2}:\d{2}'
+        ]
+        keywords = ['演出', '活動', '時間', '場次', '首演', '表演']
+        for line in (lines or []):
+            if any(keyword in line for keyword in keywords) and any(re.search(pattern, line) for pattern in date_patterns):
+                cleaned = self.clean_text(line)
+                normalized = self.normalize_output(cleaned)
+                if normalized:
+                    return normalized
+        return None
+
+    def extract_venue_address(self, js_data=None, lines=None, title=None, url=None):
+        venue = None
+        address = None
+        if js_data:
+            venue_info = js_data.get('venue_info') or js_data.get('venue')
+            if venue_info:
+                venue_info_clean = self.clean_text(venue_info)
+                parts = [part.strip() for part in re.split(r'[\n|｜\|]', venue_info_clean) if part.strip()]
+                if parts:
+                    venue = self.normalize_output(parts[0])
+                    if len(parts) > 1:
+                        address = self.normalize_output(' '.join(parts[1:]))
+        if not venue and js_data:
+            venue = self.get_js_field(js_data, ['venueName', 'venue'])
+        if not address and js_data:
+            address = self.get_js_field(js_data, ['location', 'venue_address'])
+        if not venue and lines:
+            for line in lines:
+                if 'venue' in line.lower() or '場地' in line or '館' in line:
+                    normalized = self.normalize_output(self.clean_text(line))
+                    if normalized:
+                        venue = normalized
+                        break
+        if not address and lines:
+            for line in lines:
+                if '地址' in line or 'Address' in line or 'add' in line.lower():
+                    normalized = self.normalize_output(self.clean_text(line))
+                    if normalized:
+                        address = normalized
+                        break
+        return venue, address
+
+    def extract_artist_name(self, lines, js_data=None):
+        artist = self.get_js_field(js_data, ['artistName', 'artist', 'event'])
+        if artist:
+            return artist
+        keywords = ['藝人', '表演者', '演出', 'Artist']
+        for line in (lines or []):
+            if any(keyword in line for keyword in keywords):
+                normalized = self.normalize_output(self.clean_text(line))
+                if normalized:
+                    return normalized
+        return None
     
     def calculate_similarity(self, text1, text2):
         """計算兩個文字的相似度（簡單版本）"""
@@ -906,12 +1006,16 @@ class TixcraftPrecisionFieldScraper:
             
             # 使用精確提取規則，防止位移問題 - 【合併版+暴力補全】
             event_info = self.extract_event_info(lines, js_data)  # 合併日期時間資訊 + JS數據
-            
+
             # 修正地點提取，傳入 js_data
             location = self.extract_precise_location(lines, js_data, url=url, title=final_title)
             price = self.extract_precise_price(lines)
             sale_time = self.extract_precise_sale_time(lines, js_data)  # 傳入 js_data 支援
-            
+            ticket_types = self.extract_ticket_types(lines, js_data)
+            event_time = self.extract_event_time(lines, js_data)
+            venue_name, venue_address = self.extract_venue_address(js_data=js_data, lines=lines, title=final_title, url=url)
+            artist_name = self.extract_artist_name(lines, js_data)
+
             result = {
                 'index': index,
                 'title': final_title,
@@ -921,6 +1025,14 @@ class TixcraftPrecisionFieldScraper:
                 'sale_time': sale_time,
                 'url': url
             }
+            self.add_field_if_present(result, 'event_name', final_title)
+            self.add_field_if_present(result, 'ticket_price', price)
+            self.add_field_if_present(result, 'ticket_types', ticket_types)
+            self.add_field_if_present(result, 'event_time', event_time)
+            self.add_field_if_present(result, 'venue_name', venue_name)
+            self.add_field_if_present(result, 'venue_address', venue_address)
+            self.add_field_if_present(result, 'artist_name', artist_name)
+            result['event_link'] = url
             
             # 日誌輸出 - 更新為新格式
             self.logger.info(f"  標題：{final_title}")
@@ -946,7 +1058,7 @@ class TixcraftPrecisionFieldScraper:
                 'url': url
             }
             
-    def scrape_all_events(self):
+    def scrape_all_events(self, limit=None):
         """爬取所有活動並處理 - 即時儲存版"""
         output_file = 'tixcraft_activities.json'
         
@@ -979,6 +1091,12 @@ class TixcraftPrecisionFieldScraper:
             for index, url in enumerate(activity_links, 1):
                 # 處理單一活動
                 event_data = self.process_single_event(url, index)
+                if limit and index >= limit:
+                    activity_links = activity_links[:index]
+                    total_activities = index
+                if limit and index == limit:
+                    self.logger.info(f"已達 {limit} 筆上限，停止進一步抓取")
+                    break
                 
                 if event_data['title'] not in ["錯誤", "提取失敗"]:
                     current_success_count += 1
@@ -1003,7 +1121,7 @@ class TixcraftPrecisionFieldScraper:
                     merged_success_rate = (merged_success_count / len(merged_events)) * 100 if merged_events else 0
                     
                     # 準備即時結果
-                    real_time_result = {
+                real_time_result = {
                         'scrape_time': time.strftime('%Y-%m-%d %H:%M:%S'),
                         'last_update': time.strftime('%Y-%m-%d %H:%M:%S'),
                         'total_events': len(merged_events),
