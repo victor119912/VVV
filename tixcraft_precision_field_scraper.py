@@ -19,29 +19,53 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 HOME_URL = "https://tixcraft.com/activity"
 DETAIL_LINK_PATTERN = "/activity/detail/"
-MONEY_RE = re.compile(r"(?:NT\$|\$)\s*[\d,]+(?:\s*元)?|[\d,]{3,}\s*元")
 DATE_RE = re.compile(
-    r"\d{4}[./-]\d{1,2}[./-]\d{1,2}|\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?|\d{1,2}:\d{2}"
+    r"(?:\d{4}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{1,2}"
+    r"|\d{4}年\s*\d{1,2}月\s*\d{1,2}日"
+    r"|\d{1,2}\s*[./-]\s*\d{1,2}(?:\s*[./-]\s*\d{2,4})?)"
 )
-ADDRESS_RE = re.compile(r"(?:市|縣|區|鄉|鎮|里|路|街|段|巷|弄|號|樓)")
-PLACEHOLDERS = {"", "未找到", "提取失敗", "N/A"}
-DECORATION_RE = re.compile(r"^[\s•▪※◆◇★☆▶►▸👉🎫📍⏰🎭💎❋❖❗️‼️\-]+")
-GENERIC_ARTIST_KEYWORDS = ("festival", "音樂祭", "音樂節", "博覽會", "展覽")
+TIME_RE = re.compile(r"\d{1,2}:\d{2}(?:\s*[AP]M)?", re.IGNORECASE)
+PRICE_RE = re.compile(r"(?:NT\$|\$)\s*\d[\d,]*|\d[\d,]*(?:\s*元)")
+BARE_PRICE_RE = re.compile(r"(?<!\d)(\d{3,5}(?:,\d{3})*)(?!\d)")
+ADDRESS_RE = re.compile(
+    r"(?:"
+    r"[台臺新北桃竹苗中彰雲嘉南高屏宜花東澎金馬][^ \n]{0,12}[市縣]"
+    r"|[^\n]{0,12}[市縣][^\n]{0,12}(?:區|鄉|鎮|市)"
+    r"|[^\n]{0,20}(?:路|街|大道|巷|弄)(?:[^\n]{0,10}\d+號)?"
+    r"|[^\d\n]{1,20}\d+F"
+    r"|[^\n]{1,12}町"
+    r")"
+)
+GENERIC_ARTIST_KEYWORDS = ("festival", "音樂節", "音乐节", "嘉年華", "嘉年华")
 VENUE_KEYWORDS = (
-    "巨蛋",
+    "arena",
+    "hall",
+    "stadium",
+    "dome",
+    "center",
+    "centre",
+    "legacy",
+    "zepp",
+    "theater",
+    "theatre",
     "小巨蛋",
-    "流行音樂中心",
+    "巨蛋",
     "體育館",
-    "展覽中心",
-    "Legacy",
-    "Zepp",
-    "Arena",
-    "Hall",
-    "Stadium",
-    "Dome",
-    "劇院",
-    "中心",
+    "体育馆",
+    "展演",
+    "展覽館",
+    "展览馆",
+    "音樂中心",
+    "音乐中心",
+    "流行音樂中心",
+    "流行音乐中心",
+    "場館",
+    "场馆",
+    "會館",
+    "会馆",
 )
+PLACEHOLDERS = {"", "n/a", "none", "null"}
+SECTION_FIELDS = ("event_time", "sale_time", "price", "location")
 
 
 @dataclass
@@ -64,8 +88,8 @@ class TixcraftPrecisionFieldScraper:
         logger.setLevel(logging.INFO)
         logger.handlers.clear()
 
-        log_path = Path(__file__).with_name("tixcraft_precision_field.log")
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        log_path = Path(__file__).with_name("tixcraft_precision_field.log")
 
         file_handler = logging.FileHandler(log_path, encoding="utf-8")
         file_handler.setFormatter(formatter)
@@ -81,9 +105,9 @@ class TixcraftPrecisionFieldScraper:
         options = Options()
         if self.config.headless:
             options.add_argument("--headless=new")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--no-sandbox")
         options.add_argument("--window-size=1440,1400")
         options.add_argument("--lang=zh-TW")
         options.add_argument(
@@ -143,14 +167,15 @@ class TixcraftPrecisionFieldScraper:
         unique_links: list[str] = []
         seen: set[str] = set()
         for link in links:
-            if link not in seen:
-                seen.add(link)
-                unique_links.append(link)
+            if DETAIL_LINK_PATTERN not in link or link in seen:
+                continue
+            seen.add(link)
+            unique_links.append(link)
 
         if self.config.limit:
             unique_links = unique_links[: self.config.limit]
 
-        self.logger.info("活動列表載入完成，共 %s 筆", len(unique_links))
+        self.logger.info("Collected %s activity links", len(unique_links))
         return unique_links
 
     def _fetch_payload(self, url: str) -> dict[str, Any]:
@@ -163,111 +188,216 @@ class TixcraftPrecisionFieldScraper:
             )
         )
 
-        payload = driver.execute_script(
+        return driver.execute_script(
             """
-            const q = (selector) => document.querySelector(selector)?.innerText || '';
+            const readText = (selector) => document.querySelector(selector)?.innerText || '';
             const detail = Array.isArray(window.dataLayer)
                 ? window.dataLayer.find((item) => item && item.event === 'EnterActivityDetail') || {}
                 : {};
             return {
-                title: q('#synopsisEventTitle'),
-                intro: q('#intro'),
+                title: readText('#synopsisEventTitle'),
+                intro: readText('#intro'),
                 pageTitle: document.title || '',
+                currentUrl: window.location.href,
                 dataLayer: detail,
-                currentUrl: window.location.href
             };
             """
         )
-        return payload
 
     def _clean_text(self, text: str | None) -> str:
         if not text:
             return ""
         cleaned = text.replace("\u00a0", " ").replace("\u3000", " ").replace("\ufeff", "")
-        cleaned = DECORATION_RE.sub("", cleaned.strip())
+        cleaned = cleaned.replace("｜", ":").replace("：", ":").replace("﹕", ":").replace("／", "/")
+        cleaned = cleaned.replace("\r", "\n")
         cleaned = re.sub(r"[ \t]+", " ", cleaned)
-        cleaned = re.sub(r"\s*\n\s*", "\n", cleaned)
+        cleaned = re.sub(r"\n{2,}", "\n", cleaned)
         return cleaned.strip()
 
     def _normalize_value(self, value: str | None) -> str | None:
         cleaned = self._clean_text(value)
-        if not cleaned or cleaned in PLACEHOLDERS:
+        if not cleaned:
+            return None
+        if cleaned.lower() in PLACEHOLDERS:
             return None
         return cleaned
 
+    def _compact(self, text: str) -> str:
+        return re.sub(r"\s+", "", self._clean_text(text))
+
+    def _strip_bullet_prefix(self, text: str) -> str:
+        return re.sub(r"^[\s\-*•●◆■□※【】]+", "", self._clean_text(text)).strip()
+
     def _split_intro_lines(self, intro: str) -> list[str]:
         lines: list[str] = []
-        for raw_line in intro.splitlines():
-            line = self._clean_text(raw_line)
+        for raw_line in self._clean_text(intro).splitlines():
+            line = self._strip_bullet_prefix(raw_line)
             if not line:
-                continue
-            if "示意圖僅供參考示意" in line:
                 continue
             lines.append(line)
         return lines
 
-    def _match_label(self, line: str) -> tuple[str | None, str]:
-        patterns = {
-            "event_time": (
-                r"^(?:演出時間|活動時間|活動日期|演出日期|日期|Date)\s*[：:]\s*(.*)$",
-                r"^(?:加場)\s*[：:]\s*(.*)$",
-            ),
-            "sale_time": (
-                r"^(?:售票時間|售票日期|開賣時間|開賣日期|一般售票日期|一般售票|會員售票時間|"
-                r"會員抽選登記|會員抽選結果|官方預售開賣時間|普通銷售開賣時間|"
-                r"Ticket Sales Schedule|Ticket Open|Public on sale|Presale|Pre-sale)\s*[：:]\s*(.*)$",
-            ),
-            "price": (
-                r"^(?:演出票價|活動票價|票價|票　　價|Ticket Prices|Ticket Price|PRICE|Price)\s*[：:]\s*(.*)$",
-            ),
-            "location": (
-                r"^(?:演出地點|活動地點|地點|會場|Venue|VENUE|Location|地址)\s*[：:]\s*(.*)$",
-            ),
-        }
+    def _is_generic_sale_heading(self, text: str) -> bool:
+        compact = self._compact(text).lower()
+        return compact in {"售票階段及說明", "售票資訊", "售票方式", "ticketsalesschedule"}
 
-        for field, field_patterns in patterns.items():
-            for pattern in field_patterns:
-                match = re.match(pattern, line, flags=re.IGNORECASE)
-                if match:
-                    return field, self._clean_text(match.group(1))
-        return None, line
+    def _has_date_or_time(self, text: str) -> bool:
+        return bool(DATE_RE.search(text) or TIME_RE.search(text))
+
+    def _looks_like_price_context(self, text: str) -> bool:
+        compact = self._compact(text).lower()
+        return any(
+            keyword in compact
+            for keyword in ("票價", "活動票價", "演出票價", "ticketprice", "ticketprices", "price")
+        )
+
+    def _match_label(self, line: str) -> tuple[str | None, str]:
+        stripped = self._strip_bullet_prefix(line)
+        if ":" not in stripped:
+            return None, stripped
+
+        raw_label, raw_content = stripped.split(":", 1)
+        label = self._compact(raw_label).lower()
+        content = self._clean_text(raw_content)
+
+        sale_aliases = (
+            "售票時間",
+            "開賣時間",
+            "售票日期",
+            "預售時間",
+            "publiconsale",
+            "ticketsalesschedule",
+            "onsale",
+            "presale",
+            "pre-sale",
+            "售票階段及說明",
+        )
+        event_aliases = (
+            "演出日期",
+            "演出時間",
+            "活動日期",
+            "活動時間",
+            "日期",
+            "時間",
+            "date",
+            "time",
+        )
+        price_aliases = ("活動票價", "演出票價", "票價", "票價資訊", "ticketprice", "ticketprices", "price")
+        location_aliases = ("演出地點", "活動地點", "地點", "venue", "location")
+
+        if any(alias in label for alias in sale_aliases):
+            return "sale_time", content
+        if label in location_aliases:
+            return "location", content
+        if label in price_aliases:
+            return "price", content
+        if label in event_aliases:
+            return "event_time", content
+        return None, stripped
+
+    def _is_sale_stage_heading(self, line: str) -> bool:
+        compact = self._compact(line).lower()
+        if self._is_generic_sale_heading(line):
+            return True
+        if any(
+            noise in compact
+            for noise in (
+                "資格",
+                "限量發送",
+                "請詳",
+                "詳見",
+                "更多資訊",
+                "主辦保留",
+                "verification",
+                "cardholder",
+                "information",
+                "email",
+                "successful",
+                "registrant",
+                "accesscode",
+                "receive",
+            )
+        ):
+            return False
+        if self._has_date_or_time(line) or PRICE_RE.search(line):
+            return False
+        keywords = (
+            "預售",
+            "預購",
+            "開賣",
+            "公售",
+            "抽選",
+            "登記",
+            "onsale",
+            "publiconsale",
+            "presale",
+            "pre-sale",
+            "mastercard",
+            "會員購",
+            "會員預售",
+            "會員預購",
+            "卡友預售",
+        )
+        return any(keyword in compact for keyword in keywords)
+
+    def _is_time_label_only(self, line: str) -> bool:
+        stripped = self._strip_bullet_prefix(line)
+        if ":" not in stripped:
+            return False
+        label = self._compact(stripped.split(":", 1)[0]).lower()
+        return label in {"時間", "日期", "time", "date"}
 
     def _is_continuation(self, field: str, line: str) -> bool:
         if "http" in line.lower():
             return False
         if field == "event_time":
-            return bool(DATE_RE.search(line)) and "售票" not in line
+            return self._has_date_or_time(line) and not self._is_sale_stage_heading(line) and not PRICE_RE.search(line)
         if field == "sale_time":
-            return bool(DATE_RE.search(line)) or any(
-                token in line.lower()
-                for token in ("預售", "售票", "開賣", "presale", "sale", "會員")
-            )
+            return self._has_date_or_time(line) or self._is_sale_stage_heading(line)
         if field == "price":
-            return bool(MONEY_RE.search(line)) and "服務費" not in line
+            return self._looks_like_price_line(line)
         if field == "location":
-            return not bool(MONEY_RE.search(line)) and "售票" not in line and len(line) <= 80
+            return not PRICE_RE.search(line) and not self._has_date_or_time(line) and len(line) <= 100
         return False
 
     def _extract_sections(self, lines: list[str]) -> dict[str, list[str]]:
-        sections = {
-            "event_time": [],
-            "sale_time": [],
-            "price": [],
-            "location": [],
-        }
+        sections = {field: [] for field in SECTION_FIELDS}
         current_field: str | None = None
 
         for line in lines:
+            if current_field == "sale_time" and self._is_time_label_only(line):
+                sections["sale_time"].append(self._clean_text(line.split(":", 1)[1]))
+                continue
+
+            if current_field == "event_time" and self._is_time_label_only(line):
+                sections["event_time"].append(self._clean_text(line.split(":", 1)[1]))
+                continue
+
             field, content = self._match_label(line)
             if field:
                 current_field = field
                 if content:
                     sections[field].append(content)
+                elif field == "sale_time" and self._is_sale_stage_heading(line) and not self._is_generic_sale_heading(line):
+                    sections[field].append(self._strip_bullet_prefix(line).rstrip(":"))
                 continue
+
+            if self._is_sale_stage_heading(line):
+                current_field = "sale_time"
+                if not self._is_generic_sale_heading(line):
+                    sections["sale_time"].append(self._strip_bullet_prefix(line).rstrip(":"))
+                continue
+
             if current_field and self._is_continuation(current_field, line):
                 sections[current_field].append(line)
-            else:
-                current_field = None
+                continue
+
+            if self._looks_like_price_line(line):
+                sections["price"].append(line)
+                current_field = "price"
+                continue
+
+            current_field = None
 
         return {field: self._dedupe(values) for field, values in sections.items()}
 
@@ -275,177 +405,355 @@ class TixcraftPrecisionFieldScraper:
         seen: set[str] = set()
         unique: list[str] = []
         for value in values:
-            normalized = self._clean_text(value)
-            if normalized and normalized not in seen:
-                seen.add(normalized)
-                unique.append(normalized)
+            cleaned = self._clean_text(value)
+            if not cleaned or cleaned in seen:
+                continue
+            seen.add(cleaned)
+            unique.append(cleaned)
         return unique
 
-    def _strip_field_prefix(self, text: str) -> str:
-        stripped = re.sub(
-            r"^(?:演出時間|活動時間|活動日期|演出日期|日期|售票時間|售票日期|開賣時間|開賣日期|"
-            r"一般售票日期|一般售票|會員售票時間|會員抽選登記|會員抽選結果|官方預售開賣時間|"
-            r"普通銷售開賣時間|演出票價|活動票價|票價|票　　價|演出地點|活動地點|地點|會場|"
-            r"Venue|VENUE|Location|地址|Date|Ticket Sales Schedule|Ticket Open|Public on sale|"
-            r"Presale|Pre-sale|Ticket Prices|Ticket Price|PRICE|Price|加場)\s*[：:]\s*",
-            "",
-            text,
-            flags=re.IGNORECASE,
-        )
-        return self._clean_text(stripped)
+    def _normalize_datetime_text(self, text: str) -> str:
+        normalized = self._clean_text(text)
+        normalized = re.sub(r"(?<=\d)\s*/\s*(?=\d)", "/", normalized)
+        normalized = re.sub(r"(?<=\d)\s*-\s*(?=\d)", "-", normalized)
+        normalized = re.sub(r"\s+", " ", normalized)
+        normalized = re.sub(r"(\d)\s*:\s*(\d)", r"\1:\2", normalized)
+        normalized = re.sub(r"\s*([AaPp][Mm])", r" \1", normalized)
+        return normalized.strip(" /")
 
-    def _format_time_field(self, values: list[str], sale_mode: bool = False) -> str | None:
-        normalized: list[str] = []
-        for value in values:
-            cleaned = self._strip_field_prefix(value)
-            if not cleaned:
-                continue
-            if sale_mode and not (
-                DATE_RE.search(cleaned)
-                or any(token in cleaned.lower() for token in ("預售", "售票", "開賣", "presale", "sale"))
-            ):
-                continue
-            if not sale_mode and not DATE_RE.search(cleaned):
-                continue
-            normalized.append(cleaned)
+    def _format_event_time(self, values: list[str]) -> str | None:
+        normalized = [self._normalize_datetime_text(value) for value in values if self._has_date_or_time(value)]
         normalized = self._dedupe(normalized)
-        return " / ".join(normalized) if normalized else None
+        if not normalized:
+            return None
+
+        result: list[str] = []
+        pending_date: str | None = None
+        for value in normalized:
+            has_date = bool(DATE_RE.search(value))
+            has_time = bool(TIME_RE.search(value))
+            if has_date and not has_time:
+                if pending_date:
+                    result.append(pending_date)
+                pending_date = value
+                continue
+            if has_time and not has_date and pending_date:
+                result.append(f"{pending_date} {value}")
+                pending_date = None
+                continue
+            if pending_date:
+                result.append(pending_date)
+                pending_date = None
+            result.append(value)
+        if pending_date:
+            result.append(pending_date)
+
+        return " / ".join(self._dedupe(result)) if result else None
+
+    def _format_sale_time(self, values: list[str]) -> str | None:
+        cleaned_values = [self._normalize_datetime_text(value) for value in values]
+        cleaned_values = self._dedupe(cleaned_values)
+        if not cleaned_values:
+            return None
+
+        result: list[str] = []
+        current_heading: str | None = None
+
+        for value in cleaned_values:
+            if self._is_generic_sale_heading(value):
+                continue
+            if self._is_sale_stage_heading(value) and not self._has_date_or_time(value):
+                current_heading = value.rstrip(":")
+                continue
+            if self._has_date_or_time(value):
+                if current_heading:
+                    result.append(f"{current_heading} {value}")
+                    current_heading = None
+                else:
+                    result.append(value)
+                continue
+
+        return " / ".join(self._dedupe(result)) if result else None
+
+    def _trim_price_noise(self, text: str) -> str:
+        cleaned = self._clean_text(text)
+        for keyword in (
+            "以上票價需",
+            "系統服務費",
+            "服務費另計",
+            "system fee",
+            "福利抽獎券",
+            "關於福利抽選",
+            "購票請洽",
+            "更多資訊",
+            "主辦單位",
+            "演出長度",
+            "拓元註冊",
+            "每個帳號",
+            "工作人員",
+            "依現場",
+        ):
+            if keyword in cleaned:
+                cleaned = cleaned.split(keyword, 1)[0]
+        return cleaned.strip(" /")
+
+    def _looks_like_price_line(self, text: str) -> bool:
+        compact = self._compact(text).lower()
+        if any(keyword in compact for keyword in ("服務費", "加購資格", "福利抽獎券")) and not self._looks_like_price_context(text):
+            return False
+        if self._has_date_or_time(text) and not self._looks_like_price_context(text) and not re.search(r"(?:NT\$|\$|\d+\s*元)", text):
+            return False
+        return bool(PRICE_RE.search(text) or self._looks_like_price_context(text))
+
+    def _extract_price_tokens(self, text: str, allow_bare: bool) -> list[str]:
+        tokens = [match.group(0) for match in PRICE_RE.finditer(text)]
+        if tokens:
+            return tokens
+        if not allow_bare:
+            return []
+        return [match.group(1) for match in BARE_PRICE_RE.finditer(text)]
 
     def _normalize_price(self, raw_price: str) -> str:
-        digits_match = re.search(r"[\d,]+", raw_price)
-        if not digits_match:
+        digits = re.search(r"\d[\d,]*", raw_price)
+        if not digits:
             return self._clean_text(raw_price)
-        digits = digits_match.group()
-        if "$" in raw_price or "NT$" in raw_price.upper():
-            return f"NT${digits}"
-        if "元" in raw_price:
-            return f"{digits}元"
-        return digits
+        value = int(digits.group(0).replace(",", ""))
+        return f"NT${value:,}"
 
-    def _cleanup_ticket_type(self, raw_type: str) -> str | None:
-        cleaned = self._clean_text(raw_type)
-        cleaned = re.sub(r"[（(].*?[)）]", "", cleaned)
+    def _price_amount(self, price: str) -> int | None:
+        digits = re.search(r"\d[\d,]*", price)
+        if not digits:
+            return None
+        return int(digits.group(0).replace(",", ""))
+
+    def _cleanup_ticket_type(self, text: str) -> str | None:
+        cleaned = self._clean_text(text)
         cleaned = re.sub(
-            r"^(?:演出票價|活動票價|票價|票　　價|Ticket Prices|Ticket Price|PRICE|Price)\s*",
+            r"^(?:活動票價|演出票價|票\s*價|price|ticket\s*price)\s*:\s*",
             "",
             cleaned,
             flags=re.IGNORECASE,
         )
-        cleaned = cleaned.strip(" :：-/")
-        if not cleaned or len(cleaned) > 24:
+        cleaned = re.sub(r"^[❋✦▪️■□◆•*]+", "", cleaned)
+        cleaned = re.sub(r"\bNT\.?\$?\s*$", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"^[\[\(（【]+|[\]\)）】]+$", "", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned)
+        cleaned = cleaned.strip(" :/;-")
+        if not cleaned:
             return None
         return cleaned
 
-    def _parse_ticket_entries(self, line: str) -> list[tuple[str | None, str]]:
-        segments = re.split(r"[／/;｜|]+", line)
-        entries: list[tuple[str | None, str]] = []
+    def _looks_like_ticket_type(self, text: str) -> bool:
+        candidate = self._cleanup_ticket_type(text)
+        if not candidate:
+            return False
+        if len(candidate) > 40:
+            return False
+        lowered = candidate.lower()
+        if lowered in {"票價", "price", "ticket price"}:
+            return False
+        if any(noise in lowered for noise in ("售票", "活動", "演出", "主辦", "購票", "服務費", "時間", "地點")):
+            return False
+        keywords = (
+            "vip",
+            "vvip",
+            "package",
+            "cat",
+            "ga",
+            "pass",
+            "席",
+            "區",
+            "票",
+            "站",
+            "座",
+            "身障",
+            "輪椅",
+            "wheelchair",
+        )
+        if any(keyword in lowered for keyword in keywords):
+            return True
+        if re.fullmatch(r"[A-Z0-9][A-Z0-9 .&+-]{0,12}", candidate):
+            return True
+        if re.fullmatch(r"\dF(?:站區|座位|座席|區)?", candidate, flags=re.IGNORECASE):
+            return True
+        return False
 
-        for segment in segments:
-            cleaned = self._strip_field_prefix(segment)
-            if not cleaned or "服務費" in cleaned:
-                continue
-            price_match = MONEY_RE.search(cleaned)
-            if not price_match:
-                continue
+    def _parse_ticket_segment(self, segment: str, allow_bare: bool) -> tuple[str | None, str] | None:
+        cleaned = self._trim_price_noise(segment)
+        if not cleaned:
+            return None
 
-            before = cleaned[: price_match.start()]
-            after = cleaned[price_match.end() :]
-            ticket_type = self._cleanup_ticket_type(before)
-            if not ticket_type:
-                ticket_type = self._cleanup_ticket_type(after)
+        tokens = self._extract_price_tokens(cleaned, allow_bare=allow_bare)
+        if not tokens:
+            return None
 
-            price_value = self._normalize_price(price_match.group())
-            entries.append((ticket_type, price_value))
+        first_token = tokens[0]
+        match = re.search(re.escape(first_token), cleaned)
+        if not match:
+            return None
 
-        return entries
+        ticket_type: str | None = None
+        before = self._cleanup_ticket_type(cleaned[: match.start()])
+        after = self._cleanup_ticket_type(cleaned[match.end() :])
 
-    def _extract_ticket_data(self, sections: dict[str, list[str]]) -> tuple[str | None, str | None]:
+        if before and self._looks_like_ticket_type(before):
+            ticket_type = before
+        elif after:
+            trailing = re.split(r"[，。,/]", after, maxsplit=1)[0]
+            trailing = self._cleanup_ticket_type(trailing)
+            if trailing and self._looks_like_ticket_type(trailing):
+                ticket_type = trailing
+
+        return ticket_type, self._normalize_price(first_token)
+
+    def _extract_ticket_data(self, sections: dict[str, list[str]], intro_lines: list[str]) -> tuple[str | None, str | None]:
         price_lines: list[str] = []
         for line in sections["price"]:
-            cleaned = self._strip_field_prefix(line)
-            if not cleaned:
-                continue
-            if "票價說明" in cleaned and not MONEY_RE.search(cleaned):
-                continue
-            if "服務費" in cleaned and not MONEY_RE.search(cleaned):
-                continue
-            price_lines.append(cleaned)
+            cleaned = self._trim_price_noise(line)
+            if cleaned:
+                price_lines.append(cleaned)
 
+        for line in intro_lines:
+            if not self._looks_like_price_line(line):
+                continue
+            cleaned = self._trim_price_noise(line)
+            if cleaned:
+                price_lines.append(cleaned)
+
+        price_lines = self._dedupe(price_lines)
         if not price_lines:
             return None, None
 
-        entries: list[tuple[str | None, str]] = []
+        typed_entries: list[tuple[str, str]] = []
+        raw_prices: list[str] = []
+
         for line in price_lines:
-            entries.extend(self._parse_ticket_entries(line))
-        entries = list(dict.fromkeys(entries))
+            allow_bare = bool(re.search(r"(?:NT\$|\$|\d+\s*元)", line) or self._looks_like_price_context(line))
+            parts = re.split(r"\s*/\s*", line)
+            if len(parts) == 1:
+                parts = [line]
 
-        explicit_types = self._dedupe([ticket_type for ticket_type, _ in entries if ticket_type])
-        typed_ratio = len(explicit_types) / len(entries) if entries else 0
+            for part in parts:
+                parsed = self._parse_ticket_segment(part, allow_bare=allow_bare)
+                if not parsed:
+                    for raw_price in self._extract_price_tokens(part, allow_bare=allow_bare):
+                        raw_prices.append(self._normalize_price(raw_price))
+                    continue
 
-        ticket_types = " / ".join(explicit_types) if explicit_types else None
-        if entries and typed_ratio >= 0.6:
-            normalized_entries = []
-            for ticket_type, price in entries:
-                normalized_entries.append(f"{ticket_type} {price}" if ticket_type else price)
-            ticket_price = " / ".join(self._dedupe(normalized_entries))
-        elif entries:
-            ticket_price = " / ".join(self._dedupe(price_lines))
-        else:
-            ticket_price = " / ".join(self._dedupe(price_lines))
+                ticket_type, price = parsed
+                raw_prices.append(price)
+                if ticket_type:
+                    typed_entries.append((ticket_type, price))
 
-        return ticket_price, ticket_types
+        raw_prices = self._dedupe(raw_prices)
+        unique_typed_entries = list(dict.fromkeys(typed_entries))
+        ticket_types = self._dedupe([ticket_type for ticket_type, _ in unique_typed_entries])
+
+        price_amounts = [amount for amount in (self._price_amount(price) for price in raw_prices) if amount is not None]
+        if price_amounts and max(price_amounts) >= 1000:
+            raw_prices = [price for price in raw_prices if (self._price_amount(price) or 0) >= 300]
+            unique_typed_entries = [
+                entry for entry in unique_typed_entries if (self._price_amount(entry[1]) or 0) >= 300
+            ]
+            ticket_types = self._dedupe([ticket_type for ticket_type, _ in unique_typed_entries])
+
+        if unique_typed_entries:
+            typed_prices = [price for _, price in unique_typed_entries]
+            if len(ticket_types) >= 2 or len(unique_typed_entries) == len(raw_prices):
+                return " / ".join(typed_prices), " / ".join(ticket_types)
+
+        if raw_prices:
+            partial_types = " / ".join(ticket_types) if ticket_types else None
+            return " / ".join(raw_prices), partial_types
+
+        return None, None
 
     def _looks_like_address(self, text: str) -> bool:
+        if self._looks_like_ticket_type(text):
+            return False
         return bool(ADDRESS_RE.search(text))
 
-    def _looks_like_venue(self, text: str) -> bool:
-        return any(keyword.lower() in text.lower() for keyword in VENUE_KEYWORDS)
+    def _is_reasonable_address_candidate(self, text: str) -> bool:
+        cleaned = self._clean_text(text)
+        if not cleaned or len(cleaned) > 40 or "。" in cleaned or "http" in cleaned.lower():
+            return False
+        if any(
+            keyword in cleaned
+            for keyword in ("排隊", "進場", "限購", "帳號", "工作人員", "註冊", "開賣", "售票", "序號", "抽選")
+        ):
+            return False
+        return self._looks_like_address(cleaned)
 
-    def _extract_location(self, sections: dict[str, list[str]]) -> tuple[str | None, str | None]:
+    def _looks_like_venue(self, text: str) -> bool:
+        lowered = text.lower()
+        return any(keyword in lowered for keyword in VENUE_KEYWORDS)
+
+    def _pick_best_venue(self, candidates: list[str]) -> str | None:
+        cleaned_candidates = self._dedupe(
+            [candidate for candidate in candidates if candidate and "http" not in candidate.lower()]
+        )
+        if not cleaned_candidates:
+            return None
+        ordered = sorted(
+            cleaned_candidates,
+            key=lambda value: (
+                0 if self._looks_like_venue(value) else 1,
+                0 if re.search(r"[\u4e00-\u9fff]", value) else 1,
+                len(value),
+            ),
+        )
+        return ordered[0]
+
+    def _pick_best_address(self, candidates: list[str]) -> str | None:
+        cleaned_candidates = self._dedupe(
+            [candidate for candidate in candidates if candidate and "http" not in candidate.lower()]
+        )
+        if not cleaned_candidates:
+            return None
+        ordered = sorted(cleaned_candidates, key=lambda value: (0 if self._looks_like_address(value) else 1, len(value)))
+        return ordered[0]
+
+    def _extract_location(self, sections: dict[str, list[str]], intro_lines: list[str]) -> tuple[str | None, str | None]:
         venue_candidates: list[str] = []
         address_candidates: list[str] = []
 
         for raw_line in sections["location"]:
-            line = self._strip_field_prefix(raw_line)
+            line = self._clean_text(raw_line)
             if not line:
                 continue
 
-            bracket_match = re.match(r"(.+?)[（(]([^()（）]*?(?:市|縣|區|鄉|鎮|里|路|街|段|巷|弄|號|樓).*?)[）)]$", line)
+            bracket_match = re.match(r"(.+?)[(（]([^()（）]+)[)）]$", line)
             if bracket_match:
-                venue_candidates.append(self._clean_text(bracket_match.group(1)))
-                address_candidates.append(self._clean_text(bracket_match.group(2)))
+                outer = self._clean_text(bracket_match.group(1))
+                inner = self._clean_text(bracket_match.group(2))
+                if self._looks_like_address(inner):
+                    venue_candidates.append(outer)
+                    address_candidates.append(inner)
+                    continue
+                venue_candidates.append(line)
                 continue
 
-            if self._looks_like_address(line) and not self._looks_like_venue(line):
+            if self._is_reasonable_address_candidate(line) and not self._looks_like_venue(line):
                 address_candidates.append(line)
                 continue
 
             venue_candidates.append(line)
 
+        if not address_candidates:
+            for line in intro_lines:
+                if (
+                    self._is_reasonable_address_candidate(line)
+                    and not self._has_date_or_time(line)
+                    and not self._looks_like_price_line(line)
+                ):
+                    address_candidates.append(line)
+
         venue_name = self._pick_best_venue(venue_candidates)
         address = self._pick_best_address(address_candidates)
+
+        if not venue_name and address:
+            return None, address
         return venue_name, address
-
-    def _pick_best_venue(self, candidates: list[str]) -> str | None:
-        candidates = self._dedupe([candidate for candidate in candidates if candidate and "http" not in candidate.lower()])
-        if not candidates:
-            return None
-        chinese_first = sorted(
-            candidates,
-            key=lambda candidate: (
-                0 if re.search(r"[\u4e00-\u9fff]", candidate) else 1,
-                0 if self._looks_like_venue(candidate) else 1,
-                len(candidate),
-            ),
-        )
-        return chinese_first[0]
-
-    def _pick_best_address(self, candidates: list[str]) -> str | None:
-        candidates = self._dedupe([candidate for candidate in candidates if candidate and "http" not in candidate.lower()])
-        if not candidates:
-            return None
-        ordered = sorted(candidates, key=lambda candidate: (0 if self._looks_like_address(candidate) else 1, len(candidate)))
-        return ordered[0]
 
     def _simplify_page_title(self, page_title: str) -> str | None:
         title = self._clean_text(page_title)
@@ -467,39 +775,66 @@ class TixcraftPrecisionFieldScraper:
         if artist_name:
             return artist_name
 
-        return "未找到"
+        return "Unknown Event"
 
-    def _guess_artist_from_title(self, title: str) -> str | None:
-        if not title:
+    def _guess_artist_from_title(self, event_name: str) -> str | None:
+        working = self._clean_text(event_name)
+        if not working:
             return None
 
-        keyword_pattern = re.compile(
-            r"\b(?:tour|fan meeting|concert|live|showcase|party|encore)\b",
-            flags=re.IGNORECASE,
-        )
-        if keyword_pattern.search(title):
-            match = re.split(r"\b(?:tour|fan meeting|concert|live|showcase|party|encore)\b", title, maxsplit=1, flags=re.IGNORECASE)
-            candidate = self._normalize_value(match[0]) if match else None
+        lowered = working.lower()
+        if any(keyword in lowered for keyword in GENERIC_ARTIST_KEYWORDS):
+            return None
+
+        working = re.sub(r"^【[^】]+】\s*", "", working)
+        working = re.sub(r"^\d{4}\s+", "", working)
+
+        if "“" in working or '"' in working or "‘" in working or "'" in working:
+            quoted_split = re.split(r"[“\"'‘’]", working, maxsplit=1)
+            candidate = self._normalize_value(quoted_split[0]) if quoted_split else None
             if candidate and len(candidate) <= 40:
                 return candidate
 
-        if len(title) <= 30 and not any(keyword in title.lower() for keyword in GENERIC_ARTIST_KEYWORDS):
-            return title
+        year_split = re.split(r"\b20\d{2}\b", working, maxsplit=1)
+        if len(year_split) > 1:
+            candidate = self._normalize_value(year_split[0])
+            if candidate and len(candidate) <= 40 and not any(keyword in candidate.lower() for keyword in GENERIC_ARTIST_KEYWORDS):
+                return candidate
+
+        keyword_pattern = re.compile(
+            r"(年度專場|專場|演唱會|巡迴|見面會|音樂會|FANCON|FAN MEETING|WORLD TOUR|ASIA TOUR|TOUR|CONCERT|LIVE|SHOWCASE|ENCORE)",
+            flags=re.IGNORECASE,
+        )
+        match = keyword_pattern.search(working)
+        if match:
+            candidate = self._normalize_value(working[: match.start()])
+            if candidate and len(candidate) <= 40:
+                return candidate
+
+        if "：" in working:
+            candidate = self._normalize_value(working.split("：", 1)[0])
+            if candidate and len(candidate) <= 40:
+                return candidate
+
+        if ":" in working:
+            candidate = self._normalize_value(working.split(":", 1)[0])
+            if candidate and len(candidate) <= 40:
+                return candidate
+
+        if len(working) <= 30:
+            return working
 
         return None
 
     def _extract_artist_name(self, payload: dict[str, Any], event_name: str) -> str | None:
         data_layer = payload.get("dataLayer") or {}
-        category_name = self._clean_text(data_layer.get("childCategoryName", ""))
-        if "音樂節" in category_name:
-            return None
-
         artist_name = self._normalize_value(data_layer.get("artistName"))
         if artist_name:
             lowered = artist_name.lower()
             if not any(keyword in lowered for keyword in GENERIC_ARTIST_KEYWORDS):
+                if "festival" in event_name.lower() and lowered in event_name.lower():
+                    return None
                 return artist_name
-
         return self._guess_artist_from_title(event_name)
 
     def _build_event_record(self, url: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -507,10 +842,10 @@ class TixcraftPrecisionFieldScraper:
         sections = self._extract_sections(intro_lines)
 
         event_name = self._extract_event_name(payload)
-        event_time = self._format_time_field(sections["event_time"], sale_mode=False)
-        sale_time = self._format_time_field(sections["sale_time"], sale_mode=True)
-        ticket_price, ticket_types = self._extract_ticket_data(sections)
-        venue_name, address = self._extract_location(sections)
+        ticket_price, ticket_types = self._extract_ticket_data(sections, intro_lines)
+        event_time = self._format_event_time(sections["event_time"])
+        sale_time = self._format_sale_time(sections["sale_time"])
+        venue_name, address = self._extract_location(sections, intro_lines)
         artist_name = self._extract_artist_name(payload, event_name)
 
         record: dict[str, Any] = {
@@ -563,13 +898,12 @@ class TixcraftPrecisionFieldScraper:
             records: list[dict[str, Any]] = []
 
             for index, url in enumerate(links, 1):
-                self.logger.info("處理第 %s/%s 筆：%s", index, len(links), url)
+                self.logger.info("Scraping %s/%s %s", index, len(links), url)
                 payload = self._fetch_payload(url)
-                record = self._build_event_record(url, payload)
-                records.append(record)
+                records.append(self._build_event_record(url, payload))
 
             result = self._write_output(records)
-            self.logger.info("輸出完成：%s", self.config.output_path)
+            self.logger.info("Saved results to %s", self.config.output_path)
             return result
         finally:
             self.close()
