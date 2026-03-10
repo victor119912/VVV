@@ -1,5 +1,5 @@
 {
-  "scrape_time": "2026-03-10 16:53:34",
+  "scrape_time": "2026-03-10 17:10:30",
   "total_events": 45,
   "fields": [
     "event_name",
@@ -118,7 +118,8 @@
       "ticket_price": "NT$4,800 / NT$3,800 / NT$2,400 / NT$4,800 / NT$3,800 / NT$2,400",
       "ticket_types": "VVIP / VIP / 身障席 / ・VVIP / ・VIP / ・身障者席",
       "sale_time": "登記傳送門👉https://zutomayo.net/intense2_apply_pre_taipei_2 會員抽選結果:2/5 (四）18:00 / 2/7（六）12:00 ~ 2/8（日）12:00 / 2/8（日）15:00",
-      "address": "🎸演出地點:新北市工商展覽中心（新北市五股區五權路1號）"
+      "address": "🎸演出地點:新北市工商展覽中心（新北市五股區五權路1號）",
+      "artist_name": "ZUTOMAYO"
     },
     {
       "event_name": "Laufey: A Matter of Time Tour in Taipei",

@@ -368,6 +368,32 @@ class TixcraftPrecisionFieldScraper:
             return None
         return cleaned
 
+    def _has_structured_title_artist_signal(self, event_name: str, candidate: str | None) -> bool:
+        title = self._strip_event_title_prefixes(event_name)
+        cleaned_candidate = self._clean_artist_candidate(candidate)
+        if not title or not cleaned_candidate:
+            return False
+
+        title_lower = title.lower()
+        candidate_lower = cleaned_candidate.lower()
+        if not title_lower.startswith(candidate_lower):
+            return False
+
+        suffix = title[len(cleaned_candidate) :].strip()
+        if not suffix:
+            return False
+        if self._contains_artist_event_keyword(suffix):
+            return True
+        if re.search(r"[《〈＜「『].+[》〉＞」』]", title) and re.search(
+            r"(\bin\b\s+[A-Za-z][A-Za-z ]+|台北站|臺北站|高雄站|台中站|臺中站|桃園站|台南站|臺南站|TAIPEI|KAOHSIUNG|TAICHUNG|TAINAN|TAOYUAN)\s*$",
+            title,
+            flags=re.IGNORECASE,
+        ):
+            return True
+        if re.search(r"(粉絲見面會|粉丝见面会|fan meeting|tour|concert|live)", suffix, flags=re.IGNORECASE):
+            return True
+        return False
+
     def _looks_like_valid_artist_candidate(
         self,
         candidate: str | None,
@@ -396,12 +422,11 @@ class TixcraftPrecisionFieldScraper:
 
         normalized_title = self._strip_event_title_prefixes(event_name)
         normalized_title_lower = normalized_title.lower()
-        prefix_markers = (" ", ":", "：", "-", "–", "—", "「", "『", "(", "（", "/", "|")
 
         if normalized_title_lower == lowered:
             return True
-        if any(normalized_title_lower.startswith(f"{lowered}{marker}") for marker in prefix_markers):
-            return not self._contains_brand_marker(normalized_title)
+        if self._has_structured_title_artist_signal(normalized_title, cleaned):
+            return True
         if self._contains_brand_marker(normalized_title) and not self._contains_artist_event_keyword(normalized_title):
             return False
 
